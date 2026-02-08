@@ -82,8 +82,8 @@ async function handleDownload() {
         loadingEl.style.display = 'none';
         
         if (data.status && data.data) {
-            currentData = data.data;
-            displayResult(data.data);
+            currentData = data;
+            displayResult(data);
         } else {
             alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
         }
@@ -312,32 +312,39 @@ function displayResult(data) {
         tiktokCard.style.display = 'none';
         regularPreview.style.display = 'flex';
         
+        // For YouTube, data is at root level, not in data.data
+        const displayData = currentPlatform === 'youtube' ? data : data.data || data;
+        
         // Set thumbnail
-        if (data.thumbnail || data.thumb) {
-            previewThumb.src = data.thumbnail || data.thumb;
+        if (displayData.thumbnail || displayData.thumb) {
+            previewThumb.src = displayData.thumbnail || displayData.thumb;
         }
         
         // Set title
-        previewTitle.textContent = data.title || 'Video Title';
+        previewTitle.textContent = displayData.title || 'Video Title';
         
         // Set author/channel
-        previewAuthor.textContent = data.channel || data.author?.name || 'Unknown Author';
+        previewAuthor.textContent = displayData.channel || displayData.author?.name || 'Unknown Author';
         
         // Set duration
-        if (data.fduration) {
-            previewDuration.textContent = data.fduration;
-        } else if (data.duration) {
-            previewDuration.textContent = formatDuration(data.duration);
+        if (displayData.fduration) {
+            previewDuration.textContent = displayData.fduration;
+        } else if (displayData.duration) {
+            previewDuration.textContent = formatDuration(displayData.duration);
+        } else {
+            previewDuration.textContent = '0:00';
         }
         
         // Set views
-        if (data.views) {
+        if (displayData.views) {
             // YouTube views already formatted as string like "200.858.070"
-            previewViews.textContent = data.views + ' views';
+            previewViews.textContent = displayData.views + ' views';
+        } else {
+            previewViews.textContent = '0 views';
         }
         
         // Download Options
-        displayDownloadOptions(data);
+        displayDownloadOptions(displayData);
     }
 }
 
