@@ -114,8 +114,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok AND Instagram with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram') {
+    // Handle TikTok, Instagram, AND Facebook with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'facebook') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -126,10 +126,15 @@ function displayResult(data) {
         const nickname = document.getElementById('tiktok-nickname');
         
         if (currentPlatform === 'instagram') {
-            // For Instagram, use Instagram icon from img folder
+            // For Instagram, always use default values (no user data in JSON)
             avatar.src = 'img/Instagram_icon.webp';
             username.textContent = 'Instagram Post';
             nickname.textContent = ''; // No nickname for Instagram
+        } else if (currentPlatform === 'facebook') {
+            // For Facebook, use Facebook icon
+            avatar.src = 'img/Facebook_icon.webp';
+            username.textContent = 'Facebook Video';
+            nickname.textContent = ''; // No nickname for Facebook
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -160,6 +165,15 @@ function displayResult(data) {
             if (videoItems.length > 0) {
                 videoUrl = videoItems[0].url;
             }
+        } else if (currentPlatform === 'facebook') {
+            // Facebook returns array of objects: [{quality: "HD", url: "..."}, {quality: "SD", url: "..."}]
+            const items = Array.isArray(data) ? data : [data];
+            
+            // Facebook only has videos, get HD quality first
+            const hdVideo = items.find(item => item.quality === 'HD');
+            const sdVideo = items.find(item => item.quality === 'SD');
+            
+            videoUrl = hdVideo?.url || sdVideo?.url || items[0]?.url;
         } else {
             // TikTok structure
             photoArray = data.photo || data.images;
@@ -239,14 +253,17 @@ function displayResult(data) {
         if (currentPlatform === 'instagram') {
             captionEl.textContent = 'Instagram Post';
             captionEl.style.textAlign = 'center';
+        } else if (currentPlatform === 'facebook') {
+            captionEl.textContent = 'Facebook Video';
+            captionEl.style.textAlign = 'center';
         } else {
             captionEl.textContent = data.description || data.title || 'No caption';
             captionEl.style.textAlign = 'left';
         }
         
         // Stats
-        if (currentPlatform === 'instagram') {
-            // Instagram API doesn't provide stats, show 0
+        if (currentPlatform === 'instagram' || currentPlatform === 'facebook') {
+            // Instagram & Facebook API don't provide stats, show 0
             document.getElementById('tiktok-likes').textContent = '0';
             document.getElementById('tiktok-comments').textContent = '0';
             document.getElementById('tiktok-views').textContent = '0';
@@ -265,6 +282,8 @@ function displayResult(data) {
         const dateEl = document.getElementById('tiktok-date');
         if (currentPlatform === 'instagram') {
             dateEl.textContent = 'Instagram Post';
+        } else if (currentPlatform === 'facebook') {
+            dateEl.textContent = 'Facebook Video';
         } else {
             const timestamp = data.createTime || data.create_time || data.createtime;
             if (timestamp) {
@@ -440,6 +459,25 @@ function displayDownloadOptions(data) {
             downloadOptions.appendChild(downloadAllBtn);
         }
         
+    } else if (currentPlatform === 'facebook') {
+        // Facebook: array of {quality, url}
+        const items = Array.isArray(data) ? data : [data];
+        
+        items.forEach((item, index) => {
+            if (item && item.url) {
+                const quality = item.quality || 'Video';
+                const desc = quality === 'HD' ? 'High Quality' : quality === 'SD' ? 'Standard Quality' : 'Video';
+                
+                const option = createDownloadOption({
+                    type: `Video ${quality}`,
+                    desc: desc,
+                    url: item.url,
+                    icon: 'video'
+                });
+                downloadOptions.appendChild(option);
+            }
+        });
+        
     } else if (currentPlatform === 'youtube') {
         // Video formats
         if (data.video) {
@@ -468,26 +506,6 @@ function displayDownloadOptions(data) {
             downloadOptions.appendChild(audioOption);
         }
         
-    } else if (currentPlatform === 'facebook') {
-        if (data.video_hd) {
-            const hdOption = createDownloadOption({
-                type: 'Video HD',
-                desc: 'High Quality',
-                url: data.video_hd,
-                icon: 'video'
-            });
-            downloadOptions.appendChild(hdOption);
-        }
-        
-        if (data.video_sd) {
-            const sdOption = createDownloadOption({
-                type: 'Video SD',
-                desc: 'Standard Quality',
-                url: data.video_sd,
-                icon: 'video'
-            });
-            downloadOptions.appendChild(sdOption);
-        }
     }
 }
 
