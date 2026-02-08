@@ -721,6 +721,15 @@ body::after {
     flex-shrink: 0;
 }
 
+.platform-item .platform-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 8px;
+}
+
 .platform-item span {
     display: block;
     font-size: 11px;
