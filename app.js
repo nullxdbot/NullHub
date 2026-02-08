@@ -126,8 +126,8 @@ function displayResult(data) {
         const nickname = document.getElementById('tiktok-nickname');
         
         if (currentPlatform === 'instagram') {
-            // For Instagram, always use default values (no user data in JSON)
-            avatar.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23833AB4%22/%3E%3Ctext x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2250%22 font-family=%22Arial,sans-serif%22 font-weight=%22bold%22%3EIG%3C/text%3E%3C/svg%3E';
+            // For Instagram, use Instagram icon from img folder
+            avatar.src = 'img/Instagram_icon.webp';
             username.textContent = 'Instagram Post';
             nickname.textContent = ''; // No nickname for Instagram
         } else {
