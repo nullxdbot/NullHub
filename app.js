@@ -292,29 +292,36 @@ function displayResult(data) {
         // Stats and Published Date
         const statsSection = document.querySelector('.tiktok-stats');
         const publishedSection = document.getElementById('tiktok-published');
+        const statItems = document.querySelectorAll('.stat-item');
         
         if (currentPlatform === 'instagram' || currentPlatform === 'facebook') {
             // Instagram & Facebook API don't provide stats, hide these sections
             statsSection.style.display = 'none';
             publishedSection.style.display = 'none';
         } else if (currentPlatform === 'youtube') {
-            // YouTube has views but not other stats
+            // YouTube only has views - hide all stats except views
             statsSection.style.display = 'flex';
             publishedSection.style.display = 'flex';
             
-            // Only show views for YouTube
-            document.getElementById('tiktok-likes').textContent = '0';
-            document.getElementById('tiktok-comments').textContent = '0';
+            // Hide likes, comments, shares, saved (show only views - index 2)
+            statItems[0].style.display = 'none'; // likes
+            statItems[1].style.display = 'none'; // comments
+            statItems[2].style.display = 'flex'; // views - SHOW THIS
+            statItems[3].style.display = 'none'; // shares
+            statItems[4].style.display = 'none'; // saved
+            
+            // Set views
             document.getElementById('tiktok-views').textContent = data.views || '0';
-            document.getElementById('tiktok-shares').textContent = '0';
-            document.getElementById('tiktok-saved').textContent = '0';
             
             // Set published date
             document.getElementById('tiktok-date').textContent = data.publish || 'YouTube';
         } else {
-            // TikTok has full stats, show the sections
+            // TikTok has full stats, show all sections
             statsSection.style.display = 'flex';
             publishedSection.style.display = 'flex';
+            
+            // Show all stat items
+            statItems.forEach(item => item.style.display = 'flex');
             
             document.getElementById('tiktok-likes').textContent = formatNumber(data.stats?.likes || data.stats?.diggCount || 0);
             document.getElementById('tiktok-comments').textContent = formatNumber(data.stats?.comments || data.stats?.commentCount || 0);
