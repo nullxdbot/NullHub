@@ -114,8 +114,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok specific data structure
-    if (currentPlatform === 'tiktok') {
+    // Handle TikTok AND Instagram with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -125,20 +125,45 @@ function displayResult(data) {
         const username = document.getElementById('tiktok-username');
         const nickname = document.getElementById('tiktok-nickname');
         
-        avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
-        username.textContent = data.author?.nickname || 'Unknown User';
-        nickname.textContent = '@' + (data.author?.uniqueId || data.author?.unique_id || 'unknown');
+        if (currentPlatform === 'instagram') {
+            // For Instagram, use default avatar
+            avatar.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23833AB4%22/%3E%3Ctext x=%2250%22 y=%2260%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22%3EIG%3C/text%3E%3C/svg%3E';
+            username.textContent = 'Instagram User';
+            nickname.textContent = '@instagram';
+        } else {
+            avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
+            username.textContent = data.author?.nickname || 'Unknown User';
+            nickname.textContent = '@' + (data.author?.uniqueId || data.author?.unique_id || 'unknown');
+        }
         
         // Video Player Container
         const videoContainer = document.querySelector('.tiktok-video-container');
-        const videoPlayer = document.getElementById('tiktok-video-player');
-        const videoOverlay = document.getElementById('video-overlay');
-        const playBtn = document.getElementById('play-btn');
         
-        // Check if this is a photo/slide post (has photo array or images array)
-        const photoArray = data.photo || data.images;
-        if (photoArray && Array.isArray(photoArray) && photoArray.length > 0) {
-            // This is a photo/slide post - replace video player with image slider
+        // Determine if photo or video
+        let photoArray = null;
+        let hasVideo = false;
+        
+        if (currentPlatform === 'instagram') {
+            // Instagram returns array of objects
+            const items = Array.isArray(data) ? data : [data];
+            const photoItems = items.filter(item => item.type !== 'mp4');
+            const videoItems = items.filter(item => item.type === 'mp4');
+            
+            if (photoItems.length > 0) {
+                photoArray = photoItems.map(item => item.url);
+            }
+            if (videoItems.length > 0) {
+                hasVideo = true;
+            }
+        } else {
+            // TikTok
+            photoArray = data.photo || data.images;
+            hasVideo = data.video || data.videoWM;
+        }
+        
+        // Check if this is a photo/slide post
+        if (photoArray && photoArray.length > 0 && !hasVideo) {
+            // Photo slider
             videoContainer.innerHTML = `
                 <div class="tiktok-image-slider">
                     <div class="slider-container">
@@ -167,58 +192,52 @@ function displayResult(data) {
                     ` : ''}
                 </div>
             `;
-            
-            // Reset current slide index
             currentSlideIndex = 0;
         } else {
-            // This is a video post - restore video player if needed
-            if (!videoPlayer.parentElement) {
-                videoContainer.innerHTML = `
-                    <video id="tiktok-video-player" controls playsinline></video>
-                    <div class="video-overlay" id="video-overlay">
-                        <button class="play-btn" id="play-btn">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
-                                <path d="M8 5v14l11-7z"/>
-                            </svg>
-                        </button>
-                    </div>
-                `;
-            }
+            // Video player
+            videoContainer.innerHTML = `
+                <video id="tiktok-video-player" controls playsinline></video>
+                <div class="video-overlay" id="video-overlay">
+                    <button class="play-btn" id="play-btn">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
             
             const vp = document.getElementById('tiktok-video-player');
             const vo = document.getElementById('video-overlay');
             const pb = document.getElementById('play-btn');
             
-            // Set video source - prioritize no watermark
-            if (data.video && data.video !== false) {
-                vp.src = data.video;
-            } else if (data.videoWM && data.videoWM !== false) {
-                vp.src = data.videoWM;
+            // Set video source
+            if (currentPlatform === 'instagram') {
+                const items = Array.isArray(data) ? data : [data];
+                const videoItem = items.find(item => item.type === 'mp4');
+                if (videoItem) vp.src = videoItem.url;
+            } else {
+                if (data.video && data.video !== false) {
+                    vp.src = data.video;
+                } else if (data.videoWM && data.videoWM !== false) {
+                    vp.src = data.videoWM;
+                }
             }
             
-            // Play button handlers
             pb.addEventListener('click', () => {
                 vp.play();
                 vo.classList.add('hidden');
             });
-            
             vo.addEventListener('click', () => {
                 vp.play();
                 vo.classList.add('hidden');
             });
-            
-            vp.addEventListener('play', () => {
-                vo.classList.add('hidden');
-            });
-            
-            vp.addEventListener('pause', () => {
-                vo.classList.remove('hidden');
-            });
+            vp.addEventListener('play', () => vo.classList.add('hidden'));
+            vp.addEventListener('pause', () => vo.classList.remove('hidden'));
         }
         
         // Caption
         const captionText = document.getElementById('tiktok-caption-text');
-        captionText.textContent = data.caption || data.title || 'No caption';
+        captionText.textContent = (currentPlatform === 'instagram') ? 'No caption' : (data.caption || data.title || 'No caption');
         
         // Statistics
         const likes = document.getElementById('tiktok-likes');
@@ -227,15 +246,25 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
-        comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
-        views.textContent = data.statistic?.views ? formatNumber(data.statistic.views) : '0';
-        shares.textContent = data.statistic?.shares ? formatNumber(data.statistic.shares) : '0';
-        saved.textContent = data.statistic?.saved ? formatNumber(parseInt(data.statistic.saved)) : '0';
+        if (currentPlatform === 'instagram') {
+            likes.textContent = '-';
+            comments.textContent = '-';
+            views.textContent = '-';
+            shares.textContent = '-';
+            saved.textContent = '-';
+        } else {
+            likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
+            comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
+            views.textContent = data.statistic?.views ? formatNumber(data.statistic.views) : '0';
+            shares.textContent = data.statistic?.shares ? formatNumber(data.statistic.shares) : '0';
+            saved.textContent = data.statistic?.saved ? formatNumber(parseInt(data.statistic.saved)) : '0';
+        }
         
         // Published Date
         const publishedDate = document.getElementById('tiktok-date');
-        if (data.published) {
+        if (currentPlatform === 'instagram') {
+            publishedDate.textContent = 'Instagram Post';
+        } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
         }
@@ -244,7 +273,7 @@ function displayResult(data) {
         const musicSection = document.getElementById('tiktok-music');
         const musicTitle = document.getElementById('tiktok-music-title');
         
-        if (data.music && data.music.title) {
+        if (currentPlatform === 'tiktok' && data.music && data.music.title) {
             musicSection.style.display = 'flex';
             let musicText = data.music.title;
             if (data.music.author && data.music.author !== data.music.title) {
