@@ -691,17 +691,22 @@ body::after {
 
 .platform-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
 }
 
 .platform-item {
     background: var(--bg-secondary);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-sm);
-    padding: 16px;
+    padding: 14px 12px;
     text-align: center;
     transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 90px;
 }
 
 .platform-item:hover {
@@ -713,13 +718,16 @@ body::after {
 .platform-item svg {
     margin-bottom: 8px;
     color: var(--primary-light);
+    flex-shrink: 0;
 }
 
 .platform-item span {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-secondary);
     font-weight: 500;
+    line-height: 1.3;
+    text-align: center;
 }
 
 /* How to Use */
