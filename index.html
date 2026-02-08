@@ -86,8 +86,91 @@
 
     <!-- Result Section -->
     <div class="result-section" id="result-section" style="display: none;">
-        <!-- Video Preview -->
-        <div class="video-preview">
+        <!-- TikTok Video Card -->
+        <div class="tiktok-card" id="tiktok-card" style="display: none;">
+            <div class="tiktok-header">
+                <img id="tiktok-avatar" src="" alt="Avatar" class="tiktok-avatar">
+                <div class="tiktok-user-info">
+                    <h3 id="tiktok-username">Username</h3>
+                    <p id="tiktok-nickname">@nickname</p>
+                </div>
+            </div>
+            
+            <!-- Video Player -->
+            <div class="tiktok-video-container">
+                <video id="tiktok-video-player" controls playsinline></video>
+                <div class="video-overlay" id="video-overlay">
+                    <button class="play-btn" id="play-btn">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Caption -->
+            <div class="tiktok-caption">
+                <p id="tiktok-caption-text"></p>
+            </div>
+            
+            <!-- Statistics -->
+            <div class="tiktok-stats">
+                <div class="stat-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span id="tiktok-likes">0</span>
+                </div>
+                <div class="stat-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span id="tiktok-comments">0</span>
+                </div>
+                <div class="stat-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                        <polyline points="17 6 23 6 23 12"></polyline>
+                    </svg>
+                    <span id="tiktok-views">0</span>
+                </div>
+                <div class="stat-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 1l4 4-4 4"></path>
+                        <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                        <path d="M7 23l-4-4 4-4"></path>
+                        <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                    </svg>
+                    <span id="tiktok-shares">0</span>
+                </div>
+                <div class="stat-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span id="tiktok-saved">0</span>
+                </div>
+            </div>
+            
+            <!-- Published Date -->
+            <div class="tiktok-published" id="tiktok-published">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span id="tiktok-date"></span>
+            </div>
+            
+            <!-- Music Info -->
+            <div class="tiktok-music" id="tiktok-music" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 18V5l12-2v13M9 18c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zm12-2c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z"/>
+                </svg>
+                <span id="tiktok-music-title"></span>
+            </div>
+        </div>
+        
+        <!-- Regular Video Preview (for other platforms) -->
+        <div class="video-preview" id="regular-preview">
             <img id="preview-thumb" src="" alt="Thumbnail">
             <div class="preview-info">
                 <h3 id="preview-title">Title</h3>

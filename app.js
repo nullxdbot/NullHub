@@ -111,14 +111,102 @@ function isValidUrl(string) {
 function displayResult(data) {
     resultSection.style.display = 'block';
     
+    const tiktokCard = document.getElementById('tiktok-card');
+    const regularPreview = document.getElementById('regular-preview');
+    
     // Handle TikTok specific data structure
     if (currentPlatform === 'tiktok') {
-        previewThumb.src = data.author?.avatarThumb || data.author?.avatarMedium || '';
-        previewTitle.textContent = data.caption || 'TikTok Video';
-        previewAuthor.textContent = data.author?.nickname || 'Unknown';
-        previewDuration.textContent = data.music?.duration ? `${data.music.duration}s` : '';
-        previewViews.textContent = data.statistic?.views ? formatViews(data.statistic.views) : '';
+        // Show TikTok card, hide regular preview
+        tiktokCard.style.display = 'block';
+        regularPreview.style.display = 'none';
+        
+        // User Info
+        const avatar = document.getElementById('tiktok-avatar');
+        const username = document.getElementById('tiktok-username');
+        const nickname = document.getElementById('tiktok-nickname');
+        
+        avatar.src = data.author?.avatarThumb || data.author?.avatarMedium || '';
+        username.textContent = data.author?.nickname || 'Unknown User';
+        nickname.textContent = '@' + (data.author?.uniqueId || 'unknown');
+        
+        // Video Player
+        const videoPlayer = document.getElementById('tiktok-video-player');
+        const videoOverlay = document.getElementById('video-overlay');
+        const playBtn = document.getElementById('play-btn');
+        
+        // Set video source - prioritize no watermark
+        if (data.video) {
+            videoPlayer.src = data.video;
+        } else if (data.videoWM) {
+            videoPlayer.src = data.videoWM;
+        }
+        
+        // Play button handler
+        playBtn.addEventListener('click', () => {
+            videoPlayer.play();
+            videoOverlay.classList.add('hidden');
+        });
+        
+        videoOverlay.addEventListener('click', () => {
+            videoPlayer.play();
+            videoOverlay.classList.add('hidden');
+        });
+        
+        videoPlayer.addEventListener('play', () => {
+            videoOverlay.classList.add('hidden');
+        });
+        
+        videoPlayer.addEventListener('pause', () => {
+            videoOverlay.classList.remove('hidden');
+        });
+        
+        // Caption
+        const captionText = document.getElementById('tiktok-caption-text');
+        captionText.textContent = data.caption || data.title || 'No caption';
+        
+        // Statistics
+        const likes = document.getElementById('tiktok-likes');
+        const comments = document.getElementById('tiktok-comments');
+        const views = document.getElementById('tiktok-views');
+        const shares = document.getElementById('tiktok-shares');
+        const saved = document.getElementById('tiktok-saved');
+        
+        likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
+        comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
+        views.textContent = data.statistic?.views ? formatNumber(data.statistic.views) : '0';
+        shares.textContent = data.statistic?.shares ? formatNumber(data.statistic.shares) : '0';
+        saved.textContent = data.statistic?.saved ? formatNumber(parseInt(data.statistic.saved)) : '0';
+        
+        // Published Date
+        const publishedDate = document.getElementById('tiktok-date');
+        if (data.published) {
+            const date = new Date(parseInt(data.published) * 1000);
+            publishedDate.textContent = formatDate(date);
+        }
+        
+        // Music Info
+        const musicSection = document.getElementById('tiktok-music');
+        const musicTitle = document.getElementById('tiktok-music-title');
+        
+        if (data.music && data.music.title) {
+            musicSection.style.display = 'flex';
+            let musicText = data.music.title;
+            if (data.music.author && data.music.author !== data.music.title) {
+                musicText += ' - ' + data.music.author;
+            }
+            if (data.music.duration) {
+                musicText += ' (' + data.music.duration + 's)';
+            }
+            musicTitle.textContent = musicText;
+        } else {
+            musicSection.style.display = 'none';
+        }
+        
     } else {
+        // Show regular preview, hide TikTok card
+        tiktokCard.style.display = 'none';
+        regularPreview.style.display = 'flex';
+        
         // For other platforms
         if (data.thumbnail) {
             previewThumb.src = data.thumbnail;
@@ -271,6 +359,38 @@ function formatViews(views) {
         return (views / 1000).toFixed(1) + 'K views';
     }
     return views + ' views';
+}
+
+function formatNumber(num) {
+    if (num >= 1000000000) {
+        return (num / 1000000000).toFixed(1) + 'B';
+    } else if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+}
+
+function formatDate(date) {
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    
+    if (diffMinutes < 60) {
+        return diffMinutes + ' menit yang lalu';
+    } else if (diffHours < 24) {
+        return diffHours + ' jam yang lalu';
+    } else if (diffDays < 7) {
+        return diffDays + ' hari yang lalu';
+    } else if (diffDays < 30) {
+        return Math.floor(diffDays / 7) + ' minggu yang lalu';
+    } else {
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        return date.toLocaleDateString('id-ID', options);
+    }
 }
 
 function showNotification(message) {
