@@ -2,186 +2,306 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NullHub - All-in-One Tools</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <meta name="theme-color" content="#8b5cf6">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Downloader - NullHub</title>
+    <style>
+        /* CSS Sederhana ala NullHub Theme */
+        :root {
+            --bg-color: #0d1117; /* Gelap GitHub/NullHub */
+            --card-bg: #161b22;
+            --accent: #6c5ce7; /* Warna Ungu */
+            --text-main: #e6edf3;
+            --text-sub: #8b949e;
+            --border: #30363d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+        .header p {
+            color: var(--text-sub);
+            font-size: 0.9em;
+        }
+
+        /* Input Box */
+        .input-group {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input[type="text"] {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+        }
+        
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+        }
+
+        /* Result Section */
+        #resultArea {
+            display: none; /* Tersembunyi default */
+            margin-top: 20px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            animation: fadeIn 0.5s;
+        }
+
+        .profile-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+        }
+
+        .author-name h3 { margin: 0; font-size: 16px; }
+        .author-name span { color: var(--text-sub); font-size: 14px; }
+
+        .caption {
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+        .stats div { text-align: center; }
+        .stats b { display: block; color: var(--text-main); font-size: 14px; }
+
+        .download-btn {
+            display: block;
+            text-align: center;
+            background: #2ea043; /* Warna hijau download */
+            color: white;
+            text-decoration: none;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .audio-btn {
+            background: #1f6feb; /* Warna biru */
+        }
+
+        video {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: black;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
 
-<!-- Header -->
-<header class="app-header">
-    <div class="header-content">
-        <div class="logo">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
+    <div class="container">
+        <div class="header">
+            <h1>NullHub TikTok</h1>
+            <p>Download Video TikTok Tanpa Watermark</p>
         </div>
-        <div class="header-text">
-            <h1>NullHub</h1>
-            <p>All-in-One Tools Platform</p>
+
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Tempel link TikTok di sini..." autocomplete="off">
+            <button onclick="fetchTikTok()" id="btnSubmit">Download</button>
         </div>
-    </div>
-</header>
 
-<!-- Main Container -->
-<div class="container">
-    
-    <!-- Platform Selector -->
-    <div class="platform-selector">
-        <button class="platform-btn active" data-platform="aio">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-            </svg>
-            <span>All-in-One</span>
-        </button>
-        <button class="platform-btn" data-platform="tiktok">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.28 0 .54.04.79.1V9.4a6.54 6.54 0 00-1.02-.08 6.33 6.33 0 000 12.66 6.34 6.34 0 006.33-6.33V9.38a8.16 8.16 0 004.78 1.53V7.45c-.36 0-.71-.05-1.06-.17-.27-.09-.53-.21-.77-.35z"/>
-            </svg>
-            <span>TikTok</span>
-        </button>
-        <button class="platform-btn" data-platform="instagram">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-            </svg>
-            <span>Instagram</span>
-        </button>
-        <button class="platform-btn" data-platform="youtube">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-            </svg>
-            <span>YouTube</span>
-        </button>
-        <button class="platform-btn" data-platform="facebook">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            <span>Facebook</span>
-        </button>
-    </div>
+        <div class="loader" id="loader"></div>
 
-    <!-- Input Section -->
-    <div class="input-section">
-        <div class="input-wrapper">
-            <input type="text" id="url-input" placeholder="Tempel URL video di sini..." autocomplete="off">
-            <button class="paste-btn" id="paste-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
-                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                </svg>
-            </button>
-        </div>
-        <button class="download-btn" id="download-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-            </svg>
-            <span>Unduh</span>
-        </button>
-    </div>
-
-    <!-- Loading -->
-    <div class="loading" id="loading" style="display: none;">
-        <div class="spinner"></div>
-        <p>Memproses...</p>
-    </div>
-
-    <!-- Result Section -->
-    <div class="result-section" id="result-section" style="display: none;">
-        <!-- Video Preview -->
-        <div class="video-preview">
-            <img id="preview-thumb" src="" alt="Thumbnail">
-            <div class="preview-info">
-                <h3 id="preview-title">Title</h3>
-                <p id="preview-author">Author</p>
-                <div class="preview-stats">
-                    <span id="preview-duration">0:00</span>
-                    <span id="preview-views">0 views</span>
+        <div id="resultArea">
+            <div class="profile-info">
+                <img src="" alt="Avatar" id="resAvatar" class="avatar">
+                <div class="author-name">
+                    <h3 id="resNickname">User</h3>
+                    <span id="resUsername">@username</span>
                 </div>
             </div>
-        </div>
 
-        <!-- Download Options -->
-        <div class="download-options" id="download-options">
-            <!-- Options will be inserted here -->
-        </div>
-    </div>
+            <div class="caption" id="resCaption">
+                Caption video...
+            </div>
 
-    <!-- Supported Platforms -->
-    <div class="supported-platforms">
-        <h3>Platform yang Didukung</h3>
-        <div class="platform-grid">
-            <div class="platform-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                <span>Instagram</span>
+            <div class="stats">
+                <div><b id="statLikes">0</b> Likes</div>
+                <div><b id="statViews">0</b> Views</div>
+                <div><b id="statComments">0</b> Comms</div>
             </div>
-            <div class="platform-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                <span>Facebook</span>
-            </div>
-            <div class="platform-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.28 0 .54.04.79.1V9.4a6.54 6.54 0 00-1.02-.08 6.33 6.33 0 000 12.66 6.34 6.34 0 006.33-6.33V9.38a8.16 8.16 0 004.78 1.53V7.45c-.36 0-.71-.05-1.06-.17-.27-.09-.53-.21-.77-.35z"/></svg>
-                <span>TikTok</span>
-            </div>
-            <div class="platform-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                <span>YouTube</span>
-            </div>
-            <div class="platform-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
-                <span>Twitter</span>
-            </div>
-            <div class="platform-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
-                <span>Reddit</span>
-            </div>
+
+            <video id="videoPreview" controls>
+                <source src="" type="video/mp4">
+                Browser Anda tidak mendukung tag video.
+            </video>
+
+            <a href="#" id="dlNoWm" class="download-btn" target="_blank">Download Video (No WM)</a>
+            <a href="#" id="dlAudio" class="download-btn audio-btn" target="_blank">Download Audio (MP3)</a>
         </div>
     </div>
 
-    <!-- How to Use -->
-    <div class="how-to-use">
-        <h3>Cara Menggunakan</h3>
-        <div class="steps">
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <h4>Salin Link</h4>
-                    <p>Copy link video/foto dari platform yang didukung</p>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <h4>Tempel URL</h4>
-                    <p>Tempel link di kolom input atau klik tombol paste</p>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <h4>Unduh</h4>
-                    <p>Klik tombol unduh dan pilih kualitas yang diinginkan</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <script>
+        async function fetchTikTok() {
+            const inputUrl = document.getElementById('urlInput').value;
+            const resultArea = document.getElementById('resultArea');
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('btnSubmit');
 
-    <!-- Footer -->
-    <footer class="footer">
-        <p>Dibuat dengan ❤️ oleh <strong>Farrel Aulia Irfealdo</strong></p>
-        <p class="footer-links">
-            <a href="https://whatsapp.com/channel/0029VawFbp2CHDyfgcHIo51h" target="_blank">WhatsApp</a>
-            <span>•</span>
-            <a href="https://saweria.co/nullxd" target="_blank">Saweria</a>
-        </p>
-    </footer>
+            // Validasi input kosong
+            if (!inputUrl) {
+                alert("Harap masukkan link TikTok!");
+                return;
+            }
 
-</div>
+            // UI Loading State
+            resultArea.style.display = 'none';
+            loader.style.display = 'block';
+            btn.disabled = true;
+            btn.innerText = "Memproses...";
 
-<script src="app.js"></script>
+            // API Endpoint (Sesuai request kamu)
+            const apiUrl = `https://api.neoxr.eu/api/tiktok?url=${encodeURIComponent(inputUrl)}&apikey=SelfFrrl`;
+
+            try {
+                const response = await fetch(apiUrl);
+                const json = await response.json();
+
+                if (json.status && json.data) {
+                    const data = json.data;
+
+                    // Masukkan data ke HTML
+                    document.getElementById('resAvatar').src = data.author.avatarThumb;
+                    document.getElementById('resNickname').innerText = data.author.nickname;
+                    document.getElementById('resUsername').innerText = "@" + data.author.uniqueId;
+                    document.getElementById('resCaption').innerText = data.caption || "Tanpa caption";
+                    
+                    // Statistik
+                    document.getElementById('statLikes').innerText = formatNumber(data.statistic.likes);
+                    document.getElementById('statViews').innerText = formatNumber(data.statistic.views);
+                    document.getElementById('statComments').innerText = formatNumber(data.statistic.comments);
+
+                    // Set Link Video & Audio
+                    // Note: API memberikan 'video' (no wm) dan 'audio'
+                    const videoUrl = data.video; 
+                    const audioUrl = data.audio;
+
+                    const videoPlayer = document.getElementById('videoPreview');
+                    videoPlayer.src = videoUrl;
+                    
+                    document.getElementById('dlNoWm').href = videoUrl;
+                    document.getElementById('dlAudio').href = audioUrl;
+
+                    // Tampilkan Hasil
+                    loader.style.display = 'none';
+                    resultArea.style.display = 'block';
+                } else {
+                    alert("Gagal mengambil data. Pastikan link benar atau API limit.");
+                    loader.style.display = 'none';
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Terjadi kesalahan koneksi.");
+                loader.style.display = 'none';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Download";
+            }
+        }
+
+        // Fungsi format angka (1200 -> 1.2K)
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num;
+        }
+    </script>
 </body>
 </html>
