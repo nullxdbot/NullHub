@@ -262,15 +262,13 @@ function displayResult(data) {
         }
         
         // Stats
+        const statsSection = document.querySelector('.tiktok-stats');
         if (currentPlatform === 'instagram' || currentPlatform === 'facebook') {
-            // Instagram & Facebook API don't provide stats, show 0
-            document.getElementById('tiktok-likes').textContent = '0';
-            document.getElementById('tiktok-comments').textContent = '0';
-            document.getElementById('tiktok-views').textContent = '0';
-            document.getElementById('tiktok-shares').textContent = '0';
-            document.getElementById('tiktok-saved').textContent = '0';
+            // Instagram & Facebook API don't provide stats, hide the section
+            statsSection.style.display = 'none';
         } else {
-            // TikTok has full stats
+            // TikTok has full stats, show the section
+            statsSection.style.display = 'flex';
             document.getElementById('tiktok-likes').textContent = formatNumber(data.stats?.likes || data.stats?.diggCount || 0);
             document.getElementById('tiktok-comments').textContent = formatNumber(data.stats?.comments || data.stats?.commentCount || 0);
             document.getElementById('tiktok-views').textContent = formatNumber(data.stats?.views || data.stats?.playCount || 0);
