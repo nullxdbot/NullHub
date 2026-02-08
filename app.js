@@ -250,13 +250,23 @@ function displayDownloadOptions(data) {
             downloadOptions.appendChild(option);
         }
         
-        // Audio
-        if (data.audio && data.audio !== 'https://snaptikpro.net/') {
+        // Audio MP3
+        if (data.audio && data.audio !== 'https://snaptikpro.net/' && data.audio !== '') {
             const option = createDownloadOptionSimple({
                 url: data.audio,
                 type: 'Audio MP3',
-                desc: data.music?.title || 'Audio',
+                desc: data.music?.title || 'Original Sound',
                 icon: 'audio'
+            });
+            downloadOptions.appendChild(option);
+        } else if (data.music && data.music.title) {
+            // Jika audio URL tidak tersedia, tampilkan info tapi disable button
+            const option = createDownloadOptionSimple({
+                url: '#',
+                type: 'Audio MP3',
+                desc: data.music.title + ' (Tidak tersedia)',
+                icon: 'audio',
+                disabled: true
             });
             downloadOptions.appendChild(option);
         }
@@ -304,10 +314,17 @@ function createDownloadOption(item, index) {
 function createDownloadOptionSimple(options) {
     const div = document.createElement('div');
     div.className = 'download-option';
+    if (options.disabled) {
+        div.classList.add('disabled');
+    }
     
     const iconSvg = options.icon === 'audio' ? 
         '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>' :
         '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
+    
+    const buttonHtml = options.disabled ? 
+        `<button class="option-download-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Tidak Tersedia</button>` :
+        `<button class="option-download-btn" onclick="downloadFile('${options.url}', '${options.type.replace(/ /g, '_')}')">Unduh</button>`;
     
     div.innerHTML = `
         <div class="option-info">
@@ -321,9 +338,7 @@ function createDownloadOptionSimple(options) {
                 <p>${options.desc}</p>
             </div>
         </div>
-        <button class="option-download-btn" onclick="downloadFile('${options.url}', '${options.type.replace(/ /g, '_')}')">
-            Unduh
-        </button>
+        ${buttonHtml}
     `;
     
     return div;
@@ -342,7 +357,14 @@ function downloadFile(url, quality) {
     // Create temporary link to trigger download
     const a = document.createElement('a');
     a.href = url;
-    a.download = `NullHub_${quality}_${Date.now()}.mp4`;
+    
+    // Determine file extension based on quality/type
+    let extension = '.mp4';
+    if (quality.includes('Audio') || quality.includes('MP3')) {
+        extension = '.mp3';
+    }
+    
+    a.download = `NullHub_${quality}_${Date.now()}${extension}`;
     a.target = '_blank';
     document.body.appendChild(a);
     a.click();

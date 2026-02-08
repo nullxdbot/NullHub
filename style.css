@@ -520,9 +520,14 @@ body::after {
     transition: var(--transition);
 }
 
-.download-option:hover {
+.download-option:hover:not(.disabled) {
     background: rgba(139, 92, 246, 0.1);
     border-color: var(--primary);
+}
+
+.download-option.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .option-info {
