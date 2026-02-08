@@ -263,16 +263,40 @@ function displayResult(data) {
         tiktokCard.style.display = 'none';
         regularPreview.style.display = 'flex';
         
-        // For other platforms
-        if (data.thumbnail) {
-            previewThumb.src = data.thumbnail;
+        // For Instagram and other platforms
+        // Instagram returns data as array of objects with type and url
+        if (currentPlatform === 'instagram') {
+            // For Instagram, data is an array
+            const firstItem = Array.isArray(data) ? data[0] : data;
+            
+            if (firstItem && firstItem.url) {
+                // Check if it's video or image
+                if (firstItem.type === 'mp4') {
+                    previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3Ctext x=%2260%22 y=%2250%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2216%22%3EVideo%3C/text%3E%3C/svg%3E';
+                } else {
+                    previewThumb.src = firstItem.url;
+                }
+            } else {
+                previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
+            }
+            
+            const itemCount = Array.isArray(data) ? data.length : 1;
+            previewTitle.textContent = itemCount > 1 ? `Instagram Post (${itemCount} items)` : 'Instagram Post';
+            previewAuthor.textContent = 'Instagram';
+            previewDuration.textContent = '';
+            previewViews.textContent = '';
         } else {
-            previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
+            // For other platforms
+            if (data.thumbnail) {
+                previewThumb.src = data.thumbnail;
+            } else {
+                previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
+            }
+            previewTitle.textContent = data.title || 'Video';
+            previewAuthor.textContent = data.author || 'Unknown';
+            previewDuration.textContent = data.duration || '';
+            previewViews.textContent = data.views ? formatViews(data.views) : '';
         }
-        previewTitle.textContent = data.title || 'Video';
-        previewAuthor.textContent = data.author || 'Unknown';
-        previewDuration.textContent = data.duration || '';
-        previewViews.textContent = data.views ? formatViews(data.views) : '';
     }
     
     // Display download options
@@ -281,6 +305,51 @@ function displayResult(data) {
 
 function displayDownloadOptions(data) {
     downloadOptions.innerHTML = '';
+    
+    // Instagram specific options
+    if (currentPlatform === 'instagram') {
+        // Instagram data is an array of objects with type and url
+        const items = Array.isArray(data) ? data : [data];
+        
+        items.forEach((item, index) => {
+            if (item && item.url) {
+                const option = createDownloadOptionSimple({
+                    url: item.url,
+                    type: item.type === 'mp4' ? `Video ${index + 1}` : `Foto ${index + 1}`,
+                    desc: item.type === 'mp4' ? 'Video HD' : 'Gambar HD',
+                    icon: item.type === 'mp4' ? 'video' : 'image'
+                });
+                downloadOptions.appendChild(option);
+            }
+        });
+        
+        // Add option to download all if multiple items
+        if (items.length > 1) {
+            const allOption = document.createElement('div');
+            allOption.className = 'download-option';
+            allOption.innerHTML = `
+                <div class="option-info">
+                    <div class="option-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </div>
+                    <div class="option-text">
+                        <h4>Download Semua</h4>
+                        <p>${items.length} item (foto & video)</p>
+                    </div>
+                </div>
+                <button class="option-download-btn" onclick="downloadAllInstagram()">
+                    Unduh Semua
+                </button>
+            `;
+            downloadOptions.appendChild(allOption);
+        }
+        
+        return;
+    }
     
     // TikTok specific options
     if (currentPlatform === 'tiktok') {
@@ -451,6 +520,28 @@ function downloadAllImages() {
     });
     
     showNotification(`Mengunduh ${photoArray.length} foto...`);
+}
+
+function downloadAllInstagram() {
+    if (!currentData) {
+        alert('Tidak ada item untuk diunduh');
+        return;
+    }
+    
+    const items = Array.isArray(currentData) ? currentData : [currentData];
+    
+    // Download each item with a small delay
+    items.forEach((item, index) => {
+        if (item && item.url) {
+            setTimeout(() => {
+                const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
+                const type = item.type === 'mp4' ? 'Video' : 'Photo';
+                downloadFile(item.url, `Instagram_${type}_${index + 1}.${ext}`);
+            }, index * 500); // 500ms delay between downloads
+        }
+    });
+    
+    showNotification(`Mengunduh ${items.length} item...`);
 }
 
 function getQualityFromType(type) {
