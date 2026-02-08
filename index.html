@@ -2,306 +2,86 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Downloader - NullHub</title>
-    <style>
-        /* CSS Sederhana ala NullHub Theme */
-        :root {
-            --bg-color: #0d1117; /* Gelap GitHub/NullHub */
-            --card-bg: #161b22;
-            --accent: #6c5ce7; /* Warna Ungu */
-            --text-main: #e6edf3;
-            --text-sub: #8b949e;
-            --border: #30363d;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 600px;
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            color: var(--accent);
-            margin-bottom: 5px;
-        }
-        .header p {
-            color: var(--text-sub);
-            font-size: 0.9em;
-        }
-
-        /* Input Box */
-        .input-group {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        input[type="text"] {
-            background: #0d1117;
-            border: 1px solid var(--border);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 16px;
-            outline: none;
-        }
-        
-        input[type="text"]:focus {
-            border-color: var(--accent);
-        }
-
-        button {
-            background-color: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        button:disabled {
-            background-color: #444;
-            cursor: not-allowed;
-        }
-
-        /* Result Section */
-        #resultArea {
-            display: none; /* Tersembunyi default */
-            margin-top: 20px;
-            background-color: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            animation: fadeIn 0.5s;
-        }
-
-        .profile-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: 2px solid var(--accent);
-        }
-
-        .author-name h3 { margin: 0; font-size: 16px; }
-        .author-name span { color: var(--text-sub); font-size: 14px; }
-
-        .caption {
-            font-size: 14px;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            background: #0d1117;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            color: var(--text-sub);
-        }
-        .stats div { text-align: center; }
-        .stats b { display: block; color: var(--text-main); font-size: 14px; }
-
-        .download-btn {
-            display: block;
-            text-align: center;
-            background: #2ea043; /* Warna hijau download */
-            color: white;
-            text-decoration: none;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-
-        .audio-btn {
-            background: #1f6feb; /* Warna biru */
-        }
-
-        video {
-            width: 100%;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            background: black;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Loading Spinner */
-        .loader {
-            display: none;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--accent);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NullHub - TikTok Downloader</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <meta name="theme-color" content="#8b5cf6">
 </head>
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>NullHub TikTok</h1>
-            <p>Download Video TikTok Tanpa Watermark</p>
+<div class="app-container">
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>NullHub</h1>
+                <p>Social Media Downloader</p>
+            </div>
         </div>
+    </header>
+
+    <main class="main-card">
+        <div class="platform-selector">
+            <button class="platform-btn active" data-platform="tiktok">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.28 0 .54.04.79.1V9.4a6.54 6.54 0 00-1.02-.08 6.33 6.33 0 000 12.66 6.34 6.34 0 006.33-6.33V9.38a8.16 8.16 0 004.78 1.53V7.45c-.36 0-.71-.05-1.06-.17-.27-.09-.53-.21-.77-.35z"/>
+                </svg>
+                <span>TikTok</span>
+            </button>
+            </div>
 
         <div class="input-group">
-            <input type="text" id="urlInput" placeholder="Tempel link TikTok di sini..." autocomplete="off">
-            <button onclick="fetchTikTok()" id="btnSubmit">Download</button>
+            <input type="text" id="url-input" placeholder="Tempel link TikTok di sini..." autocomplete="off">
+            <button id="paste-btn" title="Paste dari clipboard">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
+            </button>
         </div>
 
-        <div class="loader" id="loader"></div>
+        <button id="download-btn" class="main-download-btn">
+            <span>Ambil Video</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+        </button>
 
-        <div id="resultArea">
-            <div class="profile-info">
-                <img src="" alt="Avatar" id="resAvatar" class="avatar">
-                <div class="author-name">
-                    <h3 id="resNickname">User</h3>
-                    <span id="resUsername">@username</span>
+        <div id="loading" class="loading-container" style="display: none;">
+            <div class="loader"></div>
+            <p>Sedang memproses...</p>
+        </div>
+
+        <div id="result-section" class="result-section" style="display: none;">
+            <div class="preview-card">
+                <img id="preview-thumb" src="" alt="Thumbnail">
+                <div class="preview-info">
+                    <h3 id="preview-title">Judul Video</h3>
+                    <p id="preview-author">@username</p>
+                    <div class="preview-stats">
+                        <span id="preview-duration">00:00</span>
+                        <span id="preview-views">0 views</span>
+                    </div>
                 </div>
             </div>
-
-            <div class="caption" id="resCaption">
-                Caption video...
-            </div>
-
-            <div class="stats">
-                <div><b id="statLikes">0</b> Likes</div>
-                <div><b id="statViews">0</b> Views</div>
-                <div><b id="statComments">0</b> Comms</div>
-            </div>
-
-            <video id="videoPreview" controls>
-                <source src="" type="video/mp4">
-                Browser Anda tidak mendukung tag video.
-            </video>
-
-            <a href="#" id="dlNoWm" class="download-btn" target="_blank">Download Video (No WM)</a>
-            <a href="#" id="dlAudio" class="download-btn audio-btn" target="_blank">Download Audio (MP3)</a>
+            
+            <div id="download-options" class="download-options">
+                </div>
         </div>
-    </div>
+    </main>
 
-    <script>
-        async function fetchTikTok() {
-            const inputUrl = document.getElementById('urlInput').value;
-            const resultArea = document.getElementById('resultArea');
-            const loader = document.getElementById('loader');
-            const btn = document.getElementById('btnSubmit');
+    <footer class="footer">
+        <p>Dibuat dengan ❤️ oleh <strong>Farrel Aulia Irfealdo</strong></p>
+    </footer>
+</div>
 
-            // Validasi input kosong
-            if (!inputUrl) {
-                alert("Harap masukkan link TikTok!");
-                return;
-            }
-
-            // UI Loading State
-            resultArea.style.display = 'none';
-            loader.style.display = 'block';
-            btn.disabled = true;
-            btn.innerText = "Memproses...";
-
-            // API Endpoint (Sesuai request kamu)
-            const apiUrl = `https://api.neoxr.eu/api/tiktok?url=${encodeURIComponent(inputUrl)}&apikey=SelfFrrl`;
-
-            try {
-                const response = await fetch(apiUrl);
-                const json = await response.json();
-
-                if (json.status && json.data) {
-                    const data = json.data;
-
-                    // Masukkan data ke HTML
-                    document.getElementById('resAvatar').src = data.author.avatarThumb;
-                    document.getElementById('resNickname').innerText = data.author.nickname;
-                    document.getElementById('resUsername').innerText = "@" + data.author.uniqueId;
-                    document.getElementById('resCaption').innerText = data.caption || "Tanpa caption";
-                    
-                    // Statistik
-                    document.getElementById('statLikes').innerText = formatNumber(data.statistic.likes);
-                    document.getElementById('statViews').innerText = formatNumber(data.statistic.views);
-                    document.getElementById('statComments').innerText = formatNumber(data.statistic.comments);
-
-                    // Set Link Video & Audio
-                    // Note: API memberikan 'video' (no wm) dan 'audio'
-                    const videoUrl = data.video; 
-                    const audioUrl = data.audio;
-
-                    const videoPlayer = document.getElementById('videoPreview');
-                    videoPlayer.src = videoUrl;
-                    
-                    document.getElementById('dlNoWm').href = videoUrl;
-                    document.getElementById('dlAudio').href = audioUrl;
-
-                    // Tampilkan Hasil
-                    loader.style.display = 'none';
-                    resultArea.style.display = 'block';
-                } else {
-                    alert("Gagal mengambil data. Pastikan link benar atau API limit.");
-                    loader.style.display = 'none';
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Terjadi kesalahan koneksi.");
-                loader.style.display = 'none';
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Download";
-            }
-        }
-
-        // Fungsi format angka (1200 -> 1.2K)
-        function formatNumber(num) {
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-            return num;
-        }
-    </script>
+<script src="app.js"></script>
 </body>
 </html>
