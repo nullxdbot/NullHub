@@ -83,7 +83,17 @@ async function handleDownload() {
         
         if (data.status && data.data) {
             currentData = data;
-            displayResult(data);
+            
+            // For Instagram and Facebook, data.data is array
+            // For TikTok, data.data is object
+            // For YouTube, info is at root level but video at data.data
+            if (currentPlatform === 'instagram' || currentPlatform === 'facebook') {
+                displayResult(data.data);
+            } else if (currentPlatform === 'youtube') {
+                displayResult(data);
+            } else {
+                displayResult(data.data);
+            }
         } else {
             alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
         }
@@ -119,8 +129,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, AND Facebook with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'facebook') {
+    // Handle TikTok, Instagram, Facebook, AND YouTube with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'facebook' || currentPlatform === 'youtube') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -140,6 +150,11 @@ function displayResult(data) {
             avatar.src = 'img/Facebook_icon.webp';
             username.textContent = 'Facebook Video';
             nickname.textContent = ''; // No nickname for Facebook
+        } else if (currentPlatform === 'youtube') {
+            // For YouTube, use YouTube icon
+            avatar.src = 'img/YouTube_icon.webp';
+            username.textContent = data.channel || 'YouTube';
+            nickname.textContent = ''; // No nickname for YouTube
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -152,6 +167,7 @@ function displayResult(data) {
         // Determine if photo or video
         let photoArray = null;
         let videoUrl = null;
+        let posterUrl = null;
         
         if (currentPlatform === 'instagram') {
             // Instagram returns array of objects: [{type: "jpg", url: "..."}, {type: "mp4", url: "..."}]
@@ -179,6 +195,10 @@ function displayResult(data) {
             const sdVideo = items.find(item => item.quality === 'SD');
             
             videoUrl = hdVideo?.url || sdVideo?.url || items[0]?.url;
+        } else if (currentPlatform === 'youtube') {
+            // YouTube: use data.data.url for video and thumbnail for poster
+            videoUrl = data.data?.url;
+            posterUrl = data.thumbnail;
         } else {
             // TikTok structure
             photoArray = data.photo || data.images;
@@ -220,7 +240,7 @@ function displayResult(data) {
         } else if (videoUrl) {
             // Video player
             videoContainer.innerHTML = `
-                <video id="tiktok-video-player" controls playsinline></video>
+                <video id="tiktok-video-player" controls playsinline ${posterUrl ? `poster="${posterUrl}"` : ''}></video>
                 <div class="video-overlay" id="video-overlay">
                     <button class="play-btn" id="play-btn">
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
@@ -261,6 +281,9 @@ function displayResult(data) {
         } else if (currentPlatform === 'facebook') {
             captionEl.textContent = 'Facebook Video';
             captionEl.style.textAlign = 'center';
+        } else if (currentPlatform === 'youtube') {
+            captionEl.textContent = data.title || 'YouTube Video';
+            captionEl.style.textAlign = 'left';
         } else {
             captionEl.textContent = data.description || data.title || 'No caption';
             captionEl.style.textAlign = 'left';
@@ -274,6 +297,20 @@ function displayResult(data) {
             // Instagram & Facebook API don't provide stats, hide these sections
             statsSection.style.display = 'none';
             publishedSection.style.display = 'none';
+        } else if (currentPlatform === 'youtube') {
+            // YouTube has views but not other stats
+            statsSection.style.display = 'flex';
+            publishedSection.style.display = 'flex';
+            
+            // Only show views for YouTube
+            document.getElementById('tiktok-likes').textContent = '0';
+            document.getElementById('tiktok-comments').textContent = '0';
+            document.getElementById('tiktok-views').textContent = data.views || '0';
+            document.getElementById('tiktok-shares').textContent = '0';
+            document.getElementById('tiktok-saved').textContent = '0';
+            
+            // Set published date
+            document.getElementById('tiktok-date').textContent = data.publish || 'YouTube';
         } else {
             // TikTok has full stats, show the sections
             statsSection.style.display = 'flex';
@@ -490,8 +527,7 @@ function displayDownloadOptions(data) {
         });
         
     } else if (currentPlatform === 'youtube') {
-        // YouTube: need to fetch both video and audio
-        // For now, just show what we got from the current request
+        // YouTube: show current download + option to get other format
         if (data.data) {
             const item = data.data;
             const isVideo = item.extension === 'mp4';
@@ -505,11 +541,18 @@ function displayDownloadOptions(data) {
             downloadOptions.appendChild(option);
         }
         
-        // Add note about getting other formats
-        const noteDiv = document.createElement('div');
-        noteDiv.style.cssText = 'padding: 12px; text-align: center; color: #94a3b8; font-size: 13px;';
-        noteDiv.textContent = 'Untuk format lain, silakan unduh ulang dengan kualitas berbeda';
-        downloadOptions.appendChild(noteDiv);
+        // Add buttons to get Video or Audio
+        const formatButtons = document.createElement('div');
+        formatButtons.style.cssText = 'display: flex; gap: 8px; margin-top: 12px;';
+        formatButtons.innerHTML = `
+            <button onclick="downloadYouTubeFormat('video')" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
+                🎥 Download Video
+            </button>
+            <button onclick="downloadYouTubeFormat('audio')" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #ec4899, #db2777); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
+                🎵 Download Audio
+            </button>
+        `;
+        downloadOptions.appendChild(formatButtons);
         
     }
 }
@@ -589,6 +632,42 @@ function downloadAllInstagram() {
     });
     
     showNotification(`Mengunduh ${items.length} item...`);
+}
+
+function downloadYouTubeFormat(type) {
+    const url = urlInput.value.trim();
+    if (!url) {
+        alert('URL tidak ditemukan!');
+        return;
+    }
+    
+    // Show loading
+    loadingEl.style.display = 'block';
+    
+    // Determine quality based on type
+    const quality = type === 'video' ? '720p' : '128kbps';
+    const apiUrl = `${API_BASE_URL}/youtube?url=${encodeURIComponent(url)}&type=${type}&quality=${quality}&apikey=${API_KEY}`;
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            loadingEl.style.display = 'none';
+            
+            if (data.status && data.data && data.data.url) {
+                // Direct download
+                const item = data.data;
+                const filename = item.filename || `YouTube_${type}_${Date.now()}.${item.extension}`;
+                downloadFile(item.url, filename);
+                showNotification(`Download ${type} dimulai!`);
+            } else {
+                alert('Gagal mengambil data. Coba lagi.');
+            }
+        })
+        .catch(error => {
+            loadingEl.style.display = 'none';
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat download.');
+        });
 }
 
 function getQualityFromType(type) {
