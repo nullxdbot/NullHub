@@ -129,36 +129,88 @@ function displayResult(data) {
         username.textContent = data.author?.nickname || 'Unknown User';
         nickname.textContent = '@' + (data.author?.uniqueId || 'unknown');
         
-        // Video Player
+        // Video Player Container
+        const videoContainer = document.querySelector('.tiktok-video-container');
         const videoPlayer = document.getElementById('tiktok-video-player');
         const videoOverlay = document.getElementById('video-overlay');
         const playBtn = document.getElementById('play-btn');
         
-        // Set video source - prioritize no watermark
-        if (data.video) {
-            videoPlayer.src = data.video;
-        } else if (data.videoWM) {
-            videoPlayer.src = data.videoWM;
+        // Check if this is a photo/slide post (has images array)
+        if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+            // This is a photo/slide post - replace video player with image slider
+            videoContainer.innerHTML = `
+                <div class="tiktok-image-slider">
+                    <div class="slider-container">
+                        ${data.images.map((img, index) => `
+                            <div class="slide ${index === 0 ? 'active' : ''}" data-index="${index}">
+                                <img src="${img}" alt="Slide ${index + 1}" loading="lazy">
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${data.images.length > 1 ? `
+                        <button class="slider-btn prev" onclick="changeSlide(-1)">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <button class="slider-btn next" onclick="changeSlide(1)">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                        <div class="slider-dots">
+                            ${data.images.map((_, index) => `
+                                <span class="dot ${index === 0 ? 'active' : ''}" onclick="goToSlide(${index})"></span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            // This is a video post - restore video player if needed
+            if (!videoPlayer.parentElement) {
+                videoContainer.innerHTML = `
+                    <video id="tiktok-video-player" controls playsinline></video>
+                    <div class="video-overlay" id="video-overlay">
+                        <button class="play-btn" id="play-btn">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            const vp = document.getElementById('tiktok-video-player');
+            const vo = document.getElementById('video-overlay');
+            const pb = document.getElementById('play-btn');
+            
+            // Set video source - prioritize no watermark
+            if (data.video) {
+                vp.src = data.video;
+            } else if (data.videoWM) {
+                vp.src = data.videoWM;
+            }
+            
+            // Play button handlers
+            pb.addEventListener('click', () => {
+                vp.play();
+                vo.classList.add('hidden');
+            });
+            
+            vo.addEventListener('click', () => {
+                vp.play();
+                vo.classList.add('hidden');
+            });
+            
+            vp.addEventListener('play', () => {
+                vo.classList.add('hidden');
+            });
+            
+            vp.addEventListener('pause', () => {
+                vo.classList.remove('hidden');
+            });
         }
-        
-        // Play button handler
-        playBtn.addEventListener('click', () => {
-            videoPlayer.play();
-            videoOverlay.classList.add('hidden');
-        });
-        
-        videoOverlay.addEventListener('click', () => {
-            videoPlayer.play();
-            videoOverlay.classList.add('hidden');
-        });
-        
-        videoPlayer.addEventListener('play', () => {
-            videoOverlay.classList.add('hidden');
-        });
-        
-        videoPlayer.addEventListener('pause', () => {
-            videoOverlay.classList.remove('hidden');
-        });
         
         // Caption
         const captionText = document.getElementById('tiktok-caption-text');
@@ -228,26 +280,66 @@ function displayDownloadOptions(data) {
     
     // TikTok specific options
     if (currentPlatform === 'tiktok') {
-        // Video No Watermark
-        if (data.video) {
-            const option = createDownloadOptionSimple({
-                url: data.video,
-                type: 'Video HD',
-                desc: 'No Watermark',
-                icon: 'video'
+        // Check if this is a photo/slide post
+        if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+            // Photo/Slide post - provide download options for each image
+            data.images.forEach((imageUrl, index) => {
+                const option = createDownloadOptionSimple({
+                    url: imageUrl,
+                    type: `Foto ${index + 1}`,
+                    desc: `Gambar HD (${data.images.length} foto)`,
+                    icon: 'image'
+                });
+                downloadOptions.appendChild(option);
             });
-            downloadOptions.appendChild(option);
-        }
-        
-        // Video With Watermark
-        if (data.videoWM) {
-            const option = createDownloadOptionSimple({
-                url: data.videoWM,
-                type: 'Video HD',
-                desc: 'With Watermark',
-                icon: 'video'
-            });
-            downloadOptions.appendChild(option);
+            
+            // Add option to download all images
+            if (data.images.length > 1) {
+                const allOption = document.createElement('div');
+                allOption.className = 'download-option';
+                allOption.innerHTML = `
+                    <div class="option-info">
+                        <div class="option-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                        <div class="option-text">
+                            <h4>Semua Foto</h4>
+                            <p>Download ${data.images.length} gambar sekaligus</p>
+                        </div>
+                    </div>
+                    <button class="option-download-btn" onclick="downloadAllImages()">
+                        Unduh Semua
+                    </button>
+                `;
+                downloadOptions.appendChild(allOption);
+            }
+        } else {
+            // Video post
+            // Video No Watermark
+            if (data.video) {
+                const option = createDownloadOptionSimple({
+                    url: data.video,
+                    type: 'Video HD',
+                    desc: 'No Watermark',
+                    icon: 'video'
+                });
+                downloadOptions.appendChild(option);
+            }
+            
+            // Video With Watermark
+            if (data.videoWM) {
+                const option = createDownloadOptionSimple({
+                    url: data.videoWM,
+                    type: 'Video HD',
+                    desc: 'With Watermark',
+                    icon: 'video'
+                });
+                downloadOptions.appendChild(option);
+            }
         }
     } else {
         // For other platforms (array or single object)
@@ -294,9 +386,14 @@ function createDownloadOptionSimple(options) {
     const div = document.createElement('div');
     div.className = 'download-option';
     
-    const iconSvg = options.icon === 'audio' ? 
-        '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>' :
-        '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
+    let iconSvg;
+    if (options.icon === 'audio') {
+        iconSvg = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+    } else if (options.icon === 'image') {
+        iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>';
+    } else {
+        iconSvg = '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
+    }
     
     div.innerHTML = `
         <div class="option-info">
@@ -316,6 +413,22 @@ function createDownloadOptionSimple(options) {
     `;
     
     return div;
+}
+
+function downloadAllImages() {
+    if (!currentData || !currentData.images) {
+        alert('Tidak ada gambar untuk diunduh');
+        return;
+    }
+    
+    // Download each image with a small delay
+    currentData.images.forEach((imageUrl, index) => {
+        setTimeout(() => {
+            downloadFile(imageUrl, `TikTok_Photo_${index + 1}`);
+        }, index * 500); // 500ms delay between downloads
+    });
+    
+    showNotification(`Mengunduh ${currentData.images.length} foto...`);
 }
 
 function getQualityFromType(type) {
@@ -436,5 +549,51 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Slider functions for TikTok photo posts
+let currentSlideIndex = 0;
+
+function changeSlide(direction) {
+    const slides = document.querySelectorAll('.slide');
+    const dots = document.querySelectorAll('.dot');
+    
+    if (slides.length === 0) return;
+    
+    // Remove active class from current slide
+    slides[currentSlideIndex].classList.remove('active');
+    dots[currentSlideIndex].classList.remove('active');
+    
+    // Update index
+    currentSlideIndex += direction;
+    
+    // Loop around
+    if (currentSlideIndex >= slides.length) {
+        currentSlideIndex = 0;
+    } else if (currentSlideIndex < 0) {
+        currentSlideIndex = slides.length - 1;
+    }
+    
+    // Add active class to new slide
+    slides[currentSlideIndex].classList.add('active');
+    dots[currentSlideIndex].classList.add('active');
+}
+
+function goToSlide(index) {
+    const slides = document.querySelectorAll('.slide');
+    const dots = document.querySelectorAll('.dot');
+    
+    if (slides.length === 0) return;
+    
+    // Remove active class from current slide
+    slides[currentSlideIndex].classList.remove('active');
+    dots[currentSlideIndex].classList.remove('active');
+    
+    // Update to specified index
+    currentSlideIndex = index;
+    
+    // Add active class to new slide
+    slides[currentSlideIndex].classList.add('active');
+    dots[currentSlideIndex].classList.add('active');
+}
 
 console.log('🚀 NullHub Loaded!');
