@@ -125,9 +125,9 @@ function displayResult(data) {
         const username = document.getElementById('tiktok-username');
         const nickname = document.getElementById('tiktok-nickname');
         
-        avatar.src = data.author?.avatarThumb || data.author?.avatarMedium || '';
+        avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
         username.textContent = data.author?.nickname || 'Unknown User';
-        nickname.textContent = '@' + (data.author?.uniqueId || 'unknown');
+        nickname.textContent = '@' + (data.author?.uniqueId || data.author?.unique_id || 'unknown');
         
         // Video Player Container
         const videoContainer = document.querySelector('.tiktok-video-container');
@@ -135,19 +135,20 @@ function displayResult(data) {
         const videoOverlay = document.getElementById('video-overlay');
         const playBtn = document.getElementById('play-btn');
         
-        // Check if this is a photo/slide post (has images array)
-        if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+        // Check if this is a photo/slide post (has photo array or images array)
+        const photoArray = data.photo || data.images;
+        if (photoArray && Array.isArray(photoArray) && photoArray.length > 0) {
             // This is a photo/slide post - replace video player with image slider
             videoContainer.innerHTML = `
                 <div class="tiktok-image-slider">
                     <div class="slider-container">
-                        ${data.images.map((img, index) => `
+                        ${photoArray.map((img, index) => `
                             <div class="slide ${index === 0 ? 'active' : ''}" data-index="${index}">
                                 <img src="${img}" alt="Slide ${index + 1}" loading="lazy">
                             </div>
                         `).join('')}
                     </div>
-                    ${data.images.length > 1 ? `
+                    ${photoArray.length > 1 ? `
                         <button class="slider-btn prev" onclick="changeSlide(-1)">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="15 18 9 12 15 6"></polyline>
@@ -159,13 +160,16 @@ function displayResult(data) {
                             </svg>
                         </button>
                         <div class="slider-dots">
-                            ${data.images.map((_, index) => `
+                            ${photoArray.map((_, index) => `
                                 <span class="dot ${index === 0 ? 'active' : ''}" onclick="goToSlide(${index})"></span>
                             `).join('')}
                         </div>
                     ` : ''}
                 </div>
             `;
+            
+            // Reset current slide index
+            currentSlideIndex = 0;
         } else {
             // This is a video post - restore video player if needed
             if (!videoPlayer.parentElement) {
@@ -186,9 +190,9 @@ function displayResult(data) {
             const pb = document.getElementById('play-btn');
             
             // Set video source - prioritize no watermark
-            if (data.video) {
+            if (data.video && data.video !== false) {
                 vp.src = data.video;
-            } else if (data.videoWM) {
+            } else if (data.videoWM && data.videoWM !== false) {
                 vp.src = data.videoWM;
             }
             
@@ -280,21 +284,22 @@ function displayDownloadOptions(data) {
     
     // TikTok specific options
     if (currentPlatform === 'tiktok') {
-        // Check if this is a photo/slide post
-        if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+        // Check if this is a photo/slide post (use 'photo' or 'images' array)
+        const photoArray = data.photo || data.images;
+        if (photoArray && Array.isArray(photoArray) && photoArray.length > 0) {
             // Photo/Slide post - provide download options for each image
-            data.images.forEach((imageUrl, index) => {
+            photoArray.forEach((imageUrl, index) => {
                 const option = createDownloadOptionSimple({
                     url: imageUrl,
                     type: `Foto ${index + 1}`,
-                    desc: `Gambar HD (${data.images.length} foto)`,
+                    desc: `Gambar HD (${photoArray.length} foto)`,
                     icon: 'image'
                 });
                 downloadOptions.appendChild(option);
             });
             
             // Add option to download all images
-            if (data.images.length > 1) {
+            if (photoArray.length > 1) {
                 const allOption = document.createElement('div');
                 allOption.className = 'download-option';
                 allOption.innerHTML = `
@@ -308,7 +313,7 @@ function displayDownloadOptions(data) {
                         </div>
                         <div class="option-text">
                             <h4>Semua Foto</h4>
-                            <p>Download ${data.images.length} gambar sekaligus</p>
+                            <p>Download ${photoArray.length} gambar sekaligus</p>
                         </div>
                     </div>
                     <button class="option-download-btn" onclick="downloadAllImages()">
@@ -317,10 +322,21 @@ function displayDownloadOptions(data) {
                 `;
                 downloadOptions.appendChild(allOption);
             }
+            
+            // Add audio download option if available
+            if (data.audio) {
+                const audioOption = createDownloadOptionSimple({
+                    url: data.audio,
+                    type: 'Audio',
+                    desc: 'Original sound',
+                    icon: 'audio'
+                });
+                downloadOptions.appendChild(audioOption);
+            }
         } else {
             // Video post
             // Video No Watermark
-            if (data.video) {
+            if (data.video && data.video !== false) {
                 const option = createDownloadOptionSimple({
                     url: data.video,
                     type: 'Video HD',
@@ -331,7 +347,7 @@ function displayDownloadOptions(data) {
             }
             
             // Video With Watermark
-            if (data.videoWM) {
+            if (data.videoWM && data.videoWM !== false) {
                 const option = createDownloadOptionSimple({
                     url: data.videoWM,
                     type: 'Video HD',
@@ -416,19 +432,25 @@ function createDownloadOptionSimple(options) {
 }
 
 function downloadAllImages() {
-    if (!currentData || !currentData.images) {
+    if (!currentData) {
+        alert('Tidak ada gambar untuk diunduh');
+        return;
+    }
+    
+    const photoArray = currentData.photo || currentData.images;
+    if (!photoArray || !Array.isArray(photoArray) || photoArray.length === 0) {
         alert('Tidak ada gambar untuk diunduh');
         return;
     }
     
     // Download each image with a small delay
-    currentData.images.forEach((imageUrl, index) => {
+    photoArray.forEach((imageUrl, index) => {
         setTimeout(() => {
             downloadFile(imageUrl, `TikTok_Photo_${index + 1}`);
         }, index * 500); // 500ms delay between downloads
     });
     
-    showNotification(`Mengunduh ${currentData.images.length} foto...`);
+    showNotification(`Mengunduh ${photoArray.length} foto...`);
 }
 
 function getQualityFromType(type) {
