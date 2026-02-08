@@ -126,8 +126,8 @@ function displayResult(data) {
         const nickname = document.getElementById('tiktok-nickname');
         
         if (currentPlatform === 'instagram') {
-            // For Instagram, use default avatar or extract from URL
-            avatar.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23833AB4%22/%3E%3Ctext x=%2250%22 y=%2260%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22%3EIG%3C/text%3E%3C/svg%3E';
+            // For Instagram, always use default values (no user data in JSON)
+            avatar.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23833AB4%22/%3E%3Ctext x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2250%22 font-family=%22Arial,sans-serif%22 font-weight=%22bold%22%3EIG%3C/text%3E%3C/svg%3E';
             username.textContent = 'Instagram Post';
             nickname.textContent = '@instagram';
         } else {
@@ -144,19 +144,24 @@ function displayResult(data) {
         let videoUrl = null;
         
         if (currentPlatform === 'instagram') {
-            // Instagram returns array of objects
+            // Instagram returns array of objects: [{type: "jpg", url: "..."}, {type: "mp4", url: "..."}]
             const items = Array.isArray(data) ? data : [data];
-            const photoItems = items.filter(item => item.type !== 'mp4');
+            
+            // Separate photos and videos
+            const photoItems = items.filter(item => item.type && item.type !== 'mp4');
             const videoItems = items.filter(item => item.type === 'mp4');
             
+            // Get photo URLs
             if (photoItems.length > 0) {
                 photoArray = photoItems.map(item => item.url);
             }
+            
+            // Get first video URL if exists
             if (videoItems.length > 0) {
                 videoUrl = videoItems[0].url;
             }
         } else {
-            // TikTok
+            // TikTok structure
             photoArray = data.photo || data.images;
             videoUrl = data.video || data.videoWM;
         }
@@ -233,19 +238,22 @@ function displayResult(data) {
         const captionEl = document.getElementById('tiktok-caption-text');
         if (currentPlatform === 'instagram') {
             captionEl.textContent = 'Instagram Post';
+            captionEl.style.textAlign = 'center';
         } else {
             captionEl.textContent = data.description || data.title || 'No caption';
+            captionEl.style.textAlign = 'left';
         }
         
         // Stats
         if (currentPlatform === 'instagram') {
-            // Instagram doesn't always provide stats, so hide or show defaults
+            // Instagram API doesn't provide stats, show 0
             document.getElementById('tiktok-likes').textContent = '0';
             document.getElementById('tiktok-comments').textContent = '0';
             document.getElementById('tiktok-views').textContent = '0';
             document.getElementById('tiktok-shares').textContent = '0';
             document.getElementById('tiktok-saved').textContent = '0';
         } else {
+            // TikTok has full stats
             document.getElementById('tiktok-likes').textContent = formatNumber(data.stats?.likes || data.stats?.diggCount || 0);
             document.getElementById('tiktok-comments').textContent = formatNumber(data.stats?.comments || data.stats?.commentCount || 0);
             document.getElementById('tiktok-views').textContent = formatNumber(data.stats?.views || data.stats?.playCount || 0);
@@ -385,17 +393,20 @@ function displayDownloadOptions(data) {
         }
         
     } else if (currentPlatform === 'instagram') {
+        // Instagram: simple array of {type, url}
         const items = Array.isArray(data) ? data : [data];
         
-        // Show each item
         items.forEach((item, index) => {
             if (item && item.url) {
-                const type = item.type === 'mp4' ? 'Video' : 'Foto';
-                const desc = item.type === 'mp4' ? 'Gambar HD' : 'Gambar HD';
-                const icon = item.type === 'mp4' ? 'video' : 'image';
+                const isVideo = item.type === 'mp4';
+                const type = isVideo ? 'Video' : 'Foto';
+                const desc = isVideo ? 'Video HD' : 'Gambar HD';
+                const icon = isVideo ? 'video' : 'image';
+                
+                const displayName = items.length > 1 ? `${type} ${index + 1}` : type;
                 
                 const option = createDownloadOption({
-                    type: `${type} ${items.length > 1 ? index + 1 : ''}`,
+                    type: displayName,
                     desc: desc,
                     url: item.url,
                     icon: icon
@@ -404,7 +415,7 @@ function displayDownloadOptions(data) {
             }
         });
         
-        // Download all if multiple items
+        // Add "Download All" button if multiple items
         if (items.length > 1) {
             const downloadAllBtn = document.createElement('div');
             downloadAllBtn.className = 'download-option';
