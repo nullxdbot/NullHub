@@ -69,7 +69,12 @@ async function handleDownload() {
     
     try {
         const endpoint = getApiEndpoint(currentPlatform);
-        const apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+        let apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+        
+        // Add extra parameters for YouTube
+        if (currentPlatform === 'youtube') {
+            apiUrl += '&type=video&quality=720p';
+        }
         
         const response = await fetch(apiUrl);
         const data = await response.json();
@@ -93,7 +98,7 @@ function getApiEndpoint(platform) {
     const endpoints = {
         'tiktok': 'tiktok',
         'instagram': 'ig',
-        'youtube': 'yt',
+        'youtube': 'youtube',
         'facebook': 'fb'
     };
     return endpoints[platform] || 'tiktok';
