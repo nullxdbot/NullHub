@@ -261,34 +261,32 @@ function displayResult(data) {
             captionEl.style.textAlign = 'left';
         }
         
-        // Stats
+        // Stats and Published Date
         const statsSection = document.querySelector('.tiktok-stats');
+        const publishedSection = document.getElementById('tiktok-published');
+        
         if (currentPlatform === 'instagram' || currentPlatform === 'facebook') {
-            // Instagram & Facebook API don't provide stats, hide the section
+            // Instagram & Facebook API don't provide stats, hide these sections
             statsSection.style.display = 'none';
+            publishedSection.style.display = 'none';
         } else {
-            // TikTok has full stats, show the section
+            // TikTok has full stats, show the sections
             statsSection.style.display = 'flex';
+            publishedSection.style.display = 'flex';
+            
             document.getElementById('tiktok-likes').textContent = formatNumber(data.stats?.likes || data.stats?.diggCount || 0);
             document.getElementById('tiktok-comments').textContent = formatNumber(data.stats?.comments || data.stats?.commentCount || 0);
             document.getElementById('tiktok-views').textContent = formatNumber(data.stats?.views || data.stats?.playCount || 0);
             document.getElementById('tiktok-shares').textContent = formatNumber(data.stats?.shares || data.stats?.shareCount || 0);
             document.getElementById('tiktok-saved').textContent = formatNumber(data.stats?.saves || data.stats?.collectCount || 0);
-        }
-        
-        // Published Date
-        const dateEl = document.getElementById('tiktok-date');
-        if (currentPlatform === 'instagram') {
-            dateEl.textContent = 'Instagram Post';
-        } else if (currentPlatform === 'facebook') {
-            dateEl.textContent = 'Facebook Video';
-        } else {
+            
+            // Set published date
             const timestamp = data.createTime || data.create_time || data.createtime;
             if (timestamp) {
                 const date = new Date(timestamp * 1000);
-                dateEl.textContent = formatDate(date);
+                document.getElementById('tiktok-date').textContent = formatDate(date);
             } else {
-                dateEl.textContent = 'Unknown';
+                document.getElementById('tiktok-date').textContent = 'Unknown';
             }
         }
         
