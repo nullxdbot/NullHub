@@ -303,7 +303,7 @@ function displayResult(data) {
         displayDownloadOptions(data);
         
     } else {
-        // Show regular preview for other platforms
+        // Show regular preview for YouTube and other platforms
         tiktokCard.style.display = 'none';
         regularPreview.style.display = 'flex';
         
@@ -315,17 +315,20 @@ function displayResult(data) {
         // Set title
         previewTitle.textContent = data.title || 'Video Title';
         
-        // Set author
-        previewAuthor.textContent = data.author?.name || data.channel || 'Unknown Author';
+        // Set author/channel
+        previewAuthor.textContent = data.channel || data.author?.name || 'Unknown Author';
         
         // Set duration
-        if (data.duration) {
+        if (data.fduration) {
+            previewDuration.textContent = data.fduration;
+        } else if (data.duration) {
             previewDuration.textContent = formatDuration(data.duration);
         }
         
         // Set views
         if (data.views) {
-            previewViews.textContent = formatViews(data.views);
+            // YouTube views already formatted as string like "200.858.070"
+            previewViews.textContent = data.views + ' views';
         }
         
         // Download Options
@@ -475,32 +478,26 @@ function displayDownloadOptions(data) {
         });
         
     } else if (currentPlatform === 'youtube') {
-        // Video formats
-        if (data.video) {
-            const formats = ['1080p', '720p', '480p', '360p'];
-            formats.forEach(quality => {
-                if (data.video[quality]) {
-                    const videoOption = createDownloadOption({
-                        type: getQualityFromType(quality),
-                        desc: 'Video MP4',
-                        url: data.video[quality],
-                        icon: 'video'
-                    });
-                    downloadOptions.appendChild(videoOption);
-                }
+        // YouTube: need to fetch both video and audio
+        // For now, just show what we got from the current request
+        if (data.data) {
+            const item = data.data;
+            const isVideo = item.extension === 'mp4';
+            
+            const option = createDownloadOption({
+                type: isVideo ? `Video ${item.quality}` : `Audio ${item.quality}`,
+                desc: `${item.size} - ${item.extension.toUpperCase()}`,
+                url: item.url,
+                icon: isVideo ? 'video' : 'music'
             });
+            downloadOptions.appendChild(option);
         }
         
-        // Audio format
-        if (data.audio) {
-            const audioOption = createDownloadOption({
-                type: 'Audio MP3',
-                desc: 'Audio only',
-                url: data.audio,
-                icon: 'music'
-            });
-            downloadOptions.appendChild(audioOption);
-        }
+        // Add note about getting other formats
+        const noteDiv = document.createElement('div');
+        noteDiv.style.cssText = 'padding: 12px; text-align: center; color: #94a3b8; font-size: 13px;';
+        noteDiv.textContent = 'Untuk format lain, silakan unduh ulang dengan kualitas berbeda';
+        downloadOptions.appendChild(noteDiv);
         
     }
 }
@@ -625,9 +622,20 @@ function formatNumber(num) {
     return num.toString();
 }
 
-function formatDuration(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+function formatDuration(duration) {
+    // If already formatted as string (e.g., "3:59"), return as is
+    if (typeof duration === 'string') {
+        // Extract time from format like "239 (3:59)"
+        const match = duration.match(/\(([^)]+)\)/);
+        if (match) {
+            return match[1];
+        }
+        return duration;
+    }
+    
+    // If number, convert seconds to MM:SS
+    const mins = Math.floor(duration / 60);
+    const secs = duration % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
