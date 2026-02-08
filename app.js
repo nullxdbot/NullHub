@@ -84,10 +84,10 @@ async function handleDownload() {
         if (data.status && data.data) {
             currentData = data;
             
-            // For Instagram and Facebook, data.data is array
+            // For Instagram, Facebook, Twitter: data.data is array
             // For TikTok, data.data is object
             // For YouTube, info is at root level but video at data.data
-            if (currentPlatform === 'instagram' || currentPlatform === 'facebook') {
+            if (currentPlatform === 'instagram' || currentPlatform === 'facebook' || currentPlatform === 'twitter') {
                 displayResult(data.data);
             } else if (currentPlatform === 'youtube') {
                 displayResult(data);
@@ -109,7 +109,8 @@ function getApiEndpoint(platform) {
         'tiktok': 'tiktok',
         'instagram': 'ig',
         'youtube': 'youtube',
-        'facebook': 'fb'
+        'facebook': 'fb',
+        'twitter': 'twitter'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -129,8 +130,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, Facebook, AND YouTube with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'facebook' || currentPlatform === 'youtube') {
+    // Handle TikTok, Instagram, Facebook, YouTube, AND Twitter with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'facebook' || currentPlatform === 'youtube' || currentPlatform === 'twitter') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -155,6 +156,11 @@ function displayResult(data) {
             avatar.src = 'img/YouTube_icon.webp';
             username.textContent = data.channel || 'YouTube';
             nickname.textContent = ''; // No nickname for YouTube
+        } else if (currentPlatform === 'twitter') {
+            // For Twitter, use X/Twitter icon
+            avatar.src = 'img/X_icon.webp';
+            username.textContent = 'X Post';
+            nickname.textContent = ''; // No nickname for Twitter
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -169,8 +175,8 @@ function displayResult(data) {
         let videoUrl = null;
         let posterUrl = null;
         
-        if (currentPlatform === 'instagram') {
-            // Instagram returns array of objects: [{type: "jpg", url: "..."}, {type: "mp4", url: "..."}]
+        if (currentPlatform === 'instagram' || currentPlatform === 'twitter') {
+            // Instagram & Twitter return array of objects: [{type: "jpg", url: "..."}, {type: "mp4", url: "..."}]
             const items = Array.isArray(data) ? data : [data];
             
             // Separate photos and videos
@@ -284,6 +290,9 @@ function displayResult(data) {
         } else if (currentPlatform === 'youtube') {
             captionEl.textContent = data.title || 'YouTube Video';
             captionEl.style.textAlign = 'left';
+        } else if (currentPlatform === 'twitter') {
+            captionEl.textContent = 'X Post';
+            captionEl.style.textAlign = 'center';
         } else {
             captionEl.textContent = data.description || data.title || 'No caption';
             captionEl.style.textAlign = 'left';
@@ -294,8 +303,8 @@ function displayResult(data) {
         const publishedSection = document.getElementById('tiktok-published');
         const statItems = document.querySelectorAll('.stat-item');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'facebook') {
-            // Instagram & Facebook API don't provide stats, hide these sections
+        if (currentPlatform === 'instagram' || currentPlatform === 'facebook' || currentPlatform === 'twitter') {
+            // Instagram, Facebook & Twitter API don't provide stats, hide these sections
             statsSection.style.display = 'none';
             publishedSection.style.display = 'none';
         } else if (currentPlatform === 'youtube') {
@@ -466,8 +475,8 @@ function displayDownloadOptions(data) {
             downloadOptions.appendChild(audioOption);
         }
         
-    } else if (currentPlatform === 'instagram') {
-        // Instagram: simple array of {type, url}
+    } else if (currentPlatform === 'instagram' || currentPlatform === 'twitter') {
+        // Instagram & Twitter: simple array of {type, url}
         const items = Array.isArray(data) ? data : [data];
         
         items.forEach((item, index) => {
@@ -491,6 +500,7 @@ function displayDownloadOptions(data) {
         
         // Add "Download All" button if multiple items
         if (items.length > 1) {
+            const platformName = currentPlatform === 'instagram' ? 'Instagram' : 'Twitter';
             const downloadAllBtn = document.createElement('div');
             downloadAllBtn.className = 'download-option';
             downloadAllBtn.innerHTML = `
@@ -507,7 +517,7 @@ function displayDownloadOptions(data) {
                         <p>Download ${items.length} item sekaligus</p>
                     </div>
                 </div>
-                <button class="option-download-btn" onclick="downloadAllInstagram()">
+                <button class="option-download-btn" onclick="downloadAll${platformName}()">
                     Unduh Semua
                 </button>
             `;
@@ -625,7 +635,7 @@ function downloadAllInstagram() {
         return;
     }
     
-    const items = Array.isArray(currentData) ? currentData : [currentData];
+    const items = Array.isArray(currentData.data) ? currentData.data : [currentData.data];
     
     // Download each item with a small delay
     items.forEach((item, index) => {
@@ -634,6 +644,28 @@ function downloadAllInstagram() {
                 const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
                 const type = item.type === 'mp4' ? 'Video' : 'Photo';
                 downloadFile(item.url, `Instagram_${type}_${index + 1}.${ext}`);
+            }, index * 500); // 500ms delay between downloads
+        }
+    });
+    
+    showNotification(`Mengunduh ${items.length} item...`);
+}
+
+function downloadAllTwitter() {
+    if (!currentData) {
+        alert('Tidak ada item untuk diunduh');
+        return;
+    }
+    
+    const items = Array.isArray(currentData.data) ? currentData.data : [currentData.data];
+    
+    // Download each item with a small delay
+    items.forEach((item, index) => {
+        if (item && item.url) {
+            setTimeout(() => {
+                const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
+                const type = item.type === 'mp4' ? 'Video' : 'Photo';
+                downloadFile(item.url, `Twitter_${type}_${index + 1}.${ext}`);
             }, index * 500); // 500ms delay between downloads
         }
     });
