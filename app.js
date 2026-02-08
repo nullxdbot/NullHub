@@ -126,9 +126,9 @@ function displayResult(data) {
         const nickname = document.getElementById('tiktok-nickname');
         
         if (currentPlatform === 'instagram') {
-            // For Instagram, use default avatar
+            // For Instagram, use default avatar or extract from URL
             avatar.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23833AB4%22/%3E%3Ctext x=%2250%22 y=%2260%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22%3EIG%3C/text%3E%3C/svg%3E';
-            username.textContent = 'Instagram User';
+            username.textContent = 'Instagram Post';
             nickname.textContent = '@instagram';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
@@ -141,7 +141,7 @@ function displayResult(data) {
         
         // Determine if photo or video
         let photoArray = null;
-        let hasVideo = false;
+        let videoUrl = null;
         
         if (currentPlatform === 'instagram') {
             // Instagram returns array of objects
@@ -153,16 +153,16 @@ function displayResult(data) {
                 photoArray = photoItems.map(item => item.url);
             }
             if (videoItems.length > 0) {
-                hasVideo = true;
+                videoUrl = videoItems[0].url;
             }
         } else {
             // TikTok
             photoArray = data.photo || data.images;
-            hasVideo = data.video || data.videoWM;
+            videoUrl = data.video || data.videoWM;
         }
         
         // Check if this is a photo/slide post
-        if (photoArray && photoArray.length > 0 && !hasVideo) {
+        if (photoArray && photoArray.length > 0 && !videoUrl) {
             // Photo slider
             videoContainer.innerHTML = `
                 <div class="tiktok-image-slider">
@@ -193,7 +193,7 @@ function displayResult(data) {
                 </div>
             `;
             currentSlideIndex = 0;
-        } else {
+        } else if (videoUrl) {
             // Video player
             videoContainer.innerHTML = `
                 <video id="tiktok-video-player" controls playsinline></video>
@@ -211,302 +211,286 @@ function displayResult(data) {
             const pb = document.getElementById('play-btn');
             
             // Set video source
-            if (currentPlatform === 'instagram') {
-                const items = Array.isArray(data) ? data : [data];
-                const videoItem = items.find(item => item.type === 'mp4');
-                if (videoItem) vp.src = videoItem.url;
-            } else {
-                if (data.video && data.video !== false) {
-                    vp.src = data.video;
-                } else if (data.videoWM && data.videoWM !== false) {
-                    vp.src = data.videoWM;
-                }
-            }
+            vp.src = videoUrl;
             
             pb.addEventListener('click', () => {
                 vp.play();
                 vo.classList.add('hidden');
             });
-            vo.addEventListener('click', () => {
-                vp.play();
+            
+            vp.addEventListener('play', () => {
                 vo.classList.add('hidden');
             });
-            vp.addEventListener('play', () => vo.classList.add('hidden'));
-            vp.addEventListener('pause', () => vo.classList.remove('hidden'));
+            
+            vp.addEventListener('pause', () => {
+                if (vp.currentTime === 0 || vp.ended) {
+                    vo.classList.remove('hidden');
+                }
+            });
         }
         
         // Caption
-        const captionText = document.getElementById('tiktok-caption-text');
-        captionText.textContent = (currentPlatform === 'instagram') ? 'No caption' : (data.caption || data.title || 'No caption');
-        
-        // Statistics
-        const likes = document.getElementById('tiktok-likes');
-        const comments = document.getElementById('tiktok-comments');
-        const views = document.getElementById('tiktok-views');
-        const shares = document.getElementById('tiktok-shares');
-        const saved = document.getElementById('tiktok-saved');
-        
+        const captionEl = document.getElementById('tiktok-caption-text');
         if (currentPlatform === 'instagram') {
-            likes.textContent = '-';
-            comments.textContent = '-';
-            views.textContent = '-';
-            shares.textContent = '-';
-            saved.textContent = '-';
+            captionEl.textContent = 'Instagram Post';
         } else {
-            likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
-            comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
-            views.textContent = data.statistic?.views ? formatNumber(data.statistic.views) : '0';
-            shares.textContent = data.statistic?.shares ? formatNumber(data.statistic.shares) : '0';
-            saved.textContent = data.statistic?.saved ? formatNumber(parseInt(data.statistic.saved)) : '0';
+            captionEl.textContent = data.description || data.title || 'No caption';
+        }
+        
+        // Stats
+        if (currentPlatform === 'instagram') {
+            // Instagram doesn't always provide stats, so hide or show defaults
+            document.getElementById('tiktok-likes').textContent = '0';
+            document.getElementById('tiktok-comments').textContent = '0';
+            document.getElementById('tiktok-views').textContent = '0';
+            document.getElementById('tiktok-shares').textContent = '0';
+            document.getElementById('tiktok-saved').textContent = '0';
+        } else {
+            document.getElementById('tiktok-likes').textContent = formatNumber(data.stats?.likes || data.stats?.diggCount || 0);
+            document.getElementById('tiktok-comments').textContent = formatNumber(data.stats?.comments || data.stats?.commentCount || 0);
+            document.getElementById('tiktok-views').textContent = formatNumber(data.stats?.views || data.stats?.playCount || 0);
+            document.getElementById('tiktok-shares').textContent = formatNumber(data.stats?.shares || data.stats?.shareCount || 0);
+            document.getElementById('tiktok-saved').textContent = formatNumber(data.stats?.saves || data.stats?.collectCount || 0);
         }
         
         // Published Date
-        const publishedDate = document.getElementById('tiktok-date');
+        const dateEl = document.getElementById('tiktok-date');
         if (currentPlatform === 'instagram') {
-            publishedDate.textContent = 'Instagram Post';
-        } else if (data.published) {
-            const date = new Date(parseInt(data.published) * 1000);
-            publishedDate.textContent = formatDate(date);
+            dateEl.textContent = 'Instagram Post';
+        } else {
+            const timestamp = data.createTime || data.create_time || data.createtime;
+            if (timestamp) {
+                const date = new Date(timestamp * 1000);
+                dateEl.textContent = formatDate(date);
+            } else {
+                dateEl.textContent = 'Unknown';
+            }
         }
         
         // Music Info
-        const musicSection = document.getElementById('tiktok-music');
-        const musicTitle = document.getElementById('tiktok-music-title');
-        
-        if (currentPlatform === 'tiktok' && data.music && data.music.title) {
-            musicSection.style.display = 'flex';
-            let musicText = data.music.title;
-            if (data.music.author && data.music.author !== data.music.title) {
-                musicText += ' - ' + data.music.author;
-            }
-            if (data.music.duration) {
-                musicText += ' (' + data.music.duration + 's)';
-            }
-            musicTitle.textContent = musicText;
+        const musicDiv = document.getElementById('tiktok-music');
+        if (currentPlatform === 'tiktok' && data.music) {
+            musicDiv.style.display = 'flex';
+            document.getElementById('tiktok-music-title').textContent = data.music.title || data.music.play_url || 'Unknown';
         } else {
-            musicSection.style.display = 'none';
+            musicDiv.style.display = 'none';
         }
         
+        // Download Options
+        displayDownloadOptions(data);
+        
     } else {
-        // Show regular preview, hide TikTok card
+        // Show regular preview for other platforms
         tiktokCard.style.display = 'none';
         regularPreview.style.display = 'flex';
         
-        // For Instagram and other platforms
-        // Instagram returns data as array of objects with type and url
-        if (currentPlatform === 'instagram') {
-            // For Instagram, data is an array
-            const firstItem = Array.isArray(data) ? data[0] : data;
-            
-            if (firstItem && firstItem.url) {
-                // Check if it's video or image
-                if (firstItem.type === 'mp4') {
-                    previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3Ctext x=%2260%22 y=%2250%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2216%22%3EVideo%3C/text%3E%3C/svg%3E';
-                } else {
-                    previewThumb.src = firstItem.url;
-                }
-            } else {
-                previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
-            }
-            
-            const itemCount = Array.isArray(data) ? data.length : 1;
-            previewTitle.textContent = itemCount > 1 ? `Instagram Post (${itemCount} items)` : 'Instagram Post';
-            previewAuthor.textContent = 'Instagram';
-            previewDuration.textContent = '';
-            previewViews.textContent = '';
-        } else {
-            // For other platforms
-            if (data.thumbnail) {
-                previewThumb.src = data.thumbnail;
-            } else {
-                previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
-            }
-            previewTitle.textContent = data.title || 'Video';
-            previewAuthor.textContent = data.author || 'Unknown';
-            previewDuration.textContent = data.duration || '';
-            previewViews.textContent = data.views ? formatViews(data.views) : '';
+        // Set thumbnail
+        if (data.thumbnail || data.thumb) {
+            previewThumb.src = data.thumbnail || data.thumb;
         }
+        
+        // Set title
+        previewTitle.textContent = data.title || 'Video Title';
+        
+        // Set author
+        previewAuthor.textContent = data.author?.name || data.channel || 'Unknown Author';
+        
+        // Set duration
+        if (data.duration) {
+            previewDuration.textContent = formatDuration(data.duration);
+        }
+        
+        // Set views
+        if (data.views) {
+            previewViews.textContent = formatViews(data.views);
+        }
+        
+        // Download Options
+        displayDownloadOptions(data);
     }
-    
-    // Display download options
-    displayDownloadOptions(data);
 }
 
 function displayDownloadOptions(data) {
     downloadOptions.innerHTML = '';
     
-    // Instagram specific options
-    if (currentPlatform === 'instagram') {
-        // Instagram data is an array of objects with type and url
+    if (currentPlatform === 'tiktok') {
+        // Video options
+        if (data.video && data.video !== false) {
+            const videoOption = createDownloadOption({
+                type: 'Video HD',
+                desc: 'Tanpa Watermark',
+                url: data.video,
+                icon: 'video'
+            });
+            downloadOptions.appendChild(videoOption);
+        }
+        
+        if (data.videoWM && data.videoWM !== false) {
+            const videoWMOption = createDownloadOption({
+                type: 'Video HD',
+                desc: 'With Watermark',
+                url: data.videoWM,
+                icon: 'video'
+            });
+            downloadOptions.appendChild(videoWMOption);
+        }
+        
+        // Photo options
+        const photoArray = data.photo || data.images;
+        if (photoArray && Array.isArray(photoArray) && photoArray.length > 0) {
+            // Individual photos
+            photoArray.forEach((imgUrl, index) => {
+                const photoOption = createDownloadOption({
+                    type: `Foto ${index + 1}`,
+                    desc: 'Gambar HD',
+                    url: imgUrl,
+                    icon: 'image'
+                });
+                downloadOptions.appendChild(photoOption);
+            });
+            
+            // Download all button
+            const downloadAllBtn = document.createElement('div');
+            downloadAllBtn.className = 'download-option';
+            downloadAllBtn.innerHTML = `
+                <div class="option-info">
+                    <div class="option-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </div>
+                    <div class="option-text">
+                        <h4>Semua Foto</h4>
+                        <p>Download ${photoArray.length} gambar sekaligus</p>
+                    </div>
+                </div>
+                <button class="option-download-btn" onclick="downloadAllImages()">
+                    Unduh Semua
+                </button>
+            `;
+            downloadOptions.appendChild(downloadAllBtn);
+        }
+        
+        // Audio option
+        if (data.music?.play_url) {
+            const audioOption = createDownloadOption({
+                type: 'Audio',
+                desc: 'Background sound',
+                url: data.music.play_url,
+                icon: 'music'
+            });
+            downloadOptions.appendChild(audioOption);
+        }
+        
+    } else if (currentPlatform === 'instagram') {
         const items = Array.isArray(data) ? data : [data];
         
+        // Show each item
         items.forEach((item, index) => {
             if (item && item.url) {
-                const option = createDownloadOptionSimple({
+                const type = item.type === 'mp4' ? 'Video' : 'Foto';
+                const desc = item.type === 'mp4' ? 'Gambar HD' : 'Gambar HD';
+                const icon = item.type === 'mp4' ? 'video' : 'image';
+                
+                const option = createDownloadOption({
+                    type: `${type} ${items.length > 1 ? index + 1 : ''}`,
+                    desc: desc,
                     url: item.url,
-                    type: item.type === 'mp4' ? `Video ${index + 1}` : `Foto ${index + 1}`,
-                    desc: item.type === 'mp4' ? 'Video HD' : 'Gambar HD',
-                    icon: item.type === 'mp4' ? 'video' : 'image'
+                    icon: icon
                 });
                 downloadOptions.appendChild(option);
             }
         });
         
-        // Add option to download all if multiple items
+        // Download all if multiple items
         if (items.length > 1) {
-            const allOption = document.createElement('div');
-            allOption.className = 'download-option';
-            allOption.innerHTML = `
+            const downloadAllBtn = document.createElement('div');
+            downloadAllBtn.className = 'download-option';
+            downloadAllBtn.innerHTML = `
                 <div class="option-info">
                     <div class="option-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <polyline points="21 15 16 10 5 21"/>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
                         </svg>
                     </div>
                     <div class="option-text">
-                        <h4>Download Semua</h4>
-                        <p>${items.length} item (foto & video)</p>
+                        <h4>Semua Item</h4>
+                        <p>Download ${items.length} item sekaligus</p>
                     </div>
                 </div>
                 <button class="option-download-btn" onclick="downloadAllInstagram()">
                     Unduh Semua
                 </button>
             `;
-            downloadOptions.appendChild(allOption);
+            downloadOptions.appendChild(downloadAllBtn);
         }
         
-        return;
-    }
-    
-    // TikTok specific options
-    if (currentPlatform === 'tiktok') {
-        // Check if this is a photo/slide post (use 'photo' or 'images' array)
-        const photoArray = data.photo || data.images;
-        if (photoArray && Array.isArray(photoArray) && photoArray.length > 0) {
-            // Photo/Slide post - provide download options for each image
-            photoArray.forEach((imageUrl, index) => {
-                const option = createDownloadOptionSimple({
-                    url: imageUrl,
-                    type: `Foto ${index + 1}`,
-                    desc: `Gambar HD (${photoArray.length} foto)`,
-                    icon: 'image'
-                });
-                downloadOptions.appendChild(option);
+    } else if (currentPlatform === 'youtube') {
+        // Video formats
+        if (data.video) {
+            const formats = ['1080p', '720p', '480p', '360p'];
+            formats.forEach(quality => {
+                if (data.video[quality]) {
+                    const videoOption = createDownloadOption({
+                        type: getQualityFromType(quality),
+                        desc: 'Video MP4',
+                        url: data.video[quality],
+                        icon: 'video'
+                    });
+                    downloadOptions.appendChild(videoOption);
+                }
             });
-            
-            // Add option to download all images
-            if (photoArray.length > 1) {
-                const allOption = document.createElement('div');
-                allOption.className = 'download-option';
-                allOption.innerHTML = `
-                    <div class="option-info">
-                        <div class="option-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <polyline points="21 15 16 10 5 21"/>
-                            </svg>
-                        </div>
-                        <div class="option-text">
-                            <h4>Semua Foto</h4>
-                            <p>Download ${photoArray.length} gambar sekaligus</p>
-                        </div>
-                    </div>
-                    <button class="option-download-btn" onclick="downloadAllImages()">
-                        Unduh Semua
-                    </button>
-                `;
-                downloadOptions.appendChild(allOption);
-            }
-            
-            // Add audio download option if available
-            if (data.audio) {
-                const audioOption = createDownloadOptionSimple({
-                    url: data.audio,
-                    type: 'Audio',
-                    desc: 'Original sound',
-                    icon: 'audio'
-                });
-                downloadOptions.appendChild(audioOption);
-            }
-        } else {
-            // Video post
-            // Video No Watermark
-            if (data.video && data.video !== false) {
-                const option = createDownloadOptionSimple({
-                    url: data.video,
-                    type: 'Video HD',
-                    desc: 'No Watermark',
-                    icon: 'video'
-                });
-                downloadOptions.appendChild(option);
-            }
-            
-            // Video With Watermark
-            if (data.videoWM && data.videoWM !== false) {
-                const option = createDownloadOptionSimple({
-                    url: data.videoWM,
-                    type: 'Video HD',
-                    desc: 'With Watermark',
-                    icon: 'video'
-                });
-                downloadOptions.appendChild(option);
-            }
         }
-    } else {
-        // For other platforms (array or single object)
-        const items = Array.isArray(data) ? data : [data];
-        items.forEach((item, index) => {
-            const option = createDownloadOption(item, index);
-            downloadOptions.appendChild(option);
-        });
+        
+        // Audio format
+        if (data.audio) {
+            const audioOption = createDownloadOption({
+                type: 'Audio MP3',
+                desc: 'Audio only',
+                url: data.audio,
+                icon: 'music'
+            });
+            downloadOptions.appendChild(audioOption);
+        }
+        
+    } else if (currentPlatform === 'facebook') {
+        if (data.video_hd) {
+            const hdOption = createDownloadOption({
+                type: 'Video HD',
+                desc: 'High Quality',
+                url: data.video_hd,
+                icon: 'video'
+            });
+            downloadOptions.appendChild(hdOption);
+        }
+        
+        if (data.video_sd) {
+            const sdOption = createDownloadOption({
+                type: 'Video SD',
+                desc: 'Standard Quality',
+                url: data.video_sd,
+                icon: 'video'
+            });
+            downloadOptions.appendChild(sdOption);
+        }
     }
 }
 
-function createDownloadOption(item, index) {
+function createDownloadOption(options) {
     const div = document.createElement('div');
     div.className = 'download-option';
     
-    const type = item.type || 'mp4';
-    const quality = item.quality || getQualityFromType(type);
-    const size = item.size || 'Unknown';
-    
-    div.innerHTML = `
-        <div class="option-info">
-            <div class="option-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    ${type.includes('mp4') || type.includes('video') ? 
-                        '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>' :
-                        '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'
-                    }
-                </svg>
-            </div>
-            <div class="option-text">
-                <h4>${quality}</h4>
-                <p>${type.toUpperCase()} ${size !== 'Unknown' ? '• ' + size : ''}</p>
-            </div>
-        </div>
-        <button class="option-download-btn" onclick="downloadFile('${item.url}', '${quality}')">
-            Unduh
-        </button>
-    `;
-    
-    return div;
-}
-
-function createDownloadOptionSimple(options) {
-    const div = document.createElement('div');
-    div.className = 'download-option';
-    
-    let iconSvg;
-    if (options.icon === 'audio') {
-        iconSvg = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+    let iconSvg = '';
+    if (options.icon === 'video') {
+        iconSvg = '<path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>';
     } else if (options.icon === 'image') {
-        iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>';
-    } else {
-        iconSvg = '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
+        iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline>';
+    } else if (options.icon === 'music') {
+        iconSvg = '<path d="M9 18V5l12-2v13M9 18c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zm12-2c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z"/>';
     }
     
     div.innerHTML = `
@@ -614,6 +598,12 @@ function formatNumber(num) {
         return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
+}
+
+function formatDuration(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 function formatDate(date) {
