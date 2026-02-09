@@ -132,8 +132,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok AND Instagram with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram') {
+    // Handle TikTok, Instagram, AND YouTube with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -147,6 +147,11 @@ function displayResult(data) {
             // For Instagram, use Instagram icon
             avatar.src = 'img/Instagram_icon.webp';
             username.textContent = 'Instagram Downloader';
+            nickname.textContent = ''; // Kosongkan nickname
+        } else if (currentPlatform === 'youtube') {
+            // For YouTube, use YouTube icon
+            avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/240px-YouTube_full-color_icon_%282017%29.svg.png';
+            username.textContent = data.channel || 'YouTube';
             nickname.textContent = ''; // Kosongkan nickname
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
@@ -173,6 +178,9 @@ function displayResult(data) {
             if (videoItems.length > 0) {
                 hasVideo = true;
             }
+        } else if (currentPlatform === 'youtube') {
+            // YouTube always has video
+            hasVideo = true;
         } else {
             // TikTok
             photoArray = data.photo || data.images;
@@ -233,6 +241,12 @@ function displayResult(data) {
                 const items = Array.isArray(data) ? data : [data];
                 const videoItem = items.find(item => item.type === 'mp4');
                 if (videoItem) vp.src = videoItem.url;
+            } else if (currentPlatform === 'youtube') {
+                // YouTube video from data.data.url
+                if (data.data && data.data.url) {
+                    vp.src = data.data.url;
+                    vp.poster = data.thumbnail || '';
+                }
             } else {
                 if (data.video && data.video !== false) {
                     vp.src = data.video;
@@ -255,7 +269,13 @@ function displayResult(data) {
         
         // Caption
         const captionText = document.getElementById('tiktok-caption-text');
-        captionText.textContent = (currentPlatform === 'instagram') ? 'No caption' : (data.caption || data.title || 'No caption');
+        if (currentPlatform === 'instagram') {
+            captionText.textContent = 'No caption';
+        } else if (currentPlatform === 'youtube') {
+            captionText.textContent = data.title || 'No caption';
+        } else {
+            captionText.textContent = data.caption || data.title || 'No caption';
+        }
         
         // Statistics
         const statsSection = document.querySelector('.tiktok-stats');
@@ -268,6 +288,17 @@ function displayResult(data) {
         if (currentPlatform === 'instagram') {
             // Hide entire stats section for Instagram
             statsSection.style.display = 'none';
+        } else if (currentPlatform === 'youtube') {
+            // Show only views for YouTube
+            statsSection.style.display = 'flex';
+            likes.textContent = '0';
+            comments.textContent = '0';
+            // Parse views string like "26.928" to number
+            const viewsStr = data.views || '0';
+            const viewsNum = parseFloat(viewsStr.replace(/\./g, '').replace(/,/g, ''));
+            views.textContent = formatNumber(viewsNum);
+            shares.textContent = '0';
+            saved.textContent = '0';
         } else {
             // Show stats for TikTok
             statsSection.style.display = 'flex';
@@ -282,6 +313,9 @@ function displayResult(data) {
         const publishedDate = document.getElementById('tiktok-date');
         if (currentPlatform === 'instagram') {
             publishedDate.textContent = 'Instagram Post';
+        } else if (currentPlatform === 'youtube') {
+            // YouTube returns publish string like "2026-2-8 (1 day ago)"
+            publishedDate.textContent = data.publish ? data.publish.split('(')[1]?.replace(')', '') || data.publish : '';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
