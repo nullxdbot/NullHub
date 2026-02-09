@@ -246,7 +246,7 @@ function displayResult(data) {
         } else if (videoUrl) {
             // Video player
             videoContainer.innerHTML = `
-                <video id="tiktok-video-player" controls playsinline ${posterUrl ? `poster="${posterUrl}"` : ''}></video>
+                <video id="tiktok-video-player" controls playsinline crossorigin="anonymous" ${posterUrl ? `poster="${posterUrl}"` : ''}></video>
                 <div class="video-overlay" id="video-overlay">
                     <button class="play-btn" id="play-btn">
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
@@ -263,8 +263,14 @@ function displayResult(data) {
             // Set video source
             vp.src = videoUrl;
             
+            // Error handling
+            vp.addEventListener('error', (e) => {
+                console.error('Video error:', e);
+                console.log('Video URL:', videoUrl);
+            });
+            
             pb.addEventListener('click', () => {
-                vp.play();
+                vp.play().catch(err => console.error('Play error:', err));
                 vo.classList.add('hidden');
             });
             
