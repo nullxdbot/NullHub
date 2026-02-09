@@ -124,7 +124,8 @@ function getApiEndpoint(platform) {
         'tiktok': 'tiktok',
         'instagram': 'ig',
         'youtube': 'youtube',
-        'facebook': 'fb'
+        'facebook': 'fb',
+        'pinterest': 'pin'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -144,8 +145,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, YouTube, AND Facebook with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook') {
+    // Handle TikTok, Instagram, YouTube, Facebook, AND Pinterest with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -169,6 +170,11 @@ function displayResult(data) {
             // For Facebook, use Facebook icon
             avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/2023_Facebook_icon.svg/240px-2023_Facebook_icon.svg.png';
             username.textContent = 'Facebook Video';
+            nickname.textContent = ''; // Kosongkan nickname
+        } else if (currentPlatform === 'pinterest') {
+            // For Pinterest, use Pinterest icon
+            avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Pinterest-logo.png/240px-Pinterest-logo.png';
+            username.textContent = 'Pinterest';
             nickname.textContent = ''; // Kosongkan nickname
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
@@ -198,6 +204,13 @@ function displayResult(data) {
         } else if (currentPlatform === 'youtube' || currentPlatform === 'facebook') {
             // YouTube and Facebook always have video
             hasVideo = true;
+        } else if (currentPlatform === 'pinterest') {
+            // Pinterest can be video or image
+            if (data.type === 'mp4') {
+                hasVideo = true;
+            } else {
+                photoArray = [data.url];
+            }
         } else {
             // TikTok
             photoArray = data.photo || data.images;
@@ -272,6 +285,11 @@ function displayResult(data) {
                 if (video && video.url) {
                     vp.src = video.url;
                 }
+            } else if (currentPlatform === 'pinterest') {
+                // Pinterest video
+                if (data.url) {
+                    vp.src = data.url;
+                }
             } else {
                 if (data.video && data.video !== false) {
                     vp.src = data.video;
@@ -300,6 +318,8 @@ function displayResult(data) {
             captionText.textContent = data.title || 'No caption';
         } else if (currentPlatform === 'facebook') {
             captionText.textContent = 'Facebook Video';
+        } else if (currentPlatform === 'pinterest') {
+            captionText.textContent = data.type === 'mp4' ? 'Pinterest Video' : 'Pinterest Image';
         } else {
             captionText.textContent = data.caption || data.title || 'No caption';
         }
@@ -312,8 +332,8 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook') {
-            // Hide entire stats section for Instagram, YouTube, and Facebook
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest') {
+            // Hide entire stats section for Instagram, YouTube, Facebook, and Pinterest
             statsSection.style.display = 'none';
         } else {
             // Show stats for TikTok
@@ -344,6 +364,9 @@ function displayResult(data) {
             publishedDate.textContent = infoArr.join(' • ');
         } else if (currentPlatform === 'facebook') {
             publishedDate.textContent = 'Facebook Video';
+        } else if (currentPlatform === 'pinterest') {
+            // Show file size for Pinterest
+            publishedDate.textContent = data.size ? `Size: ${data.size}` : 'Pinterest';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -464,6 +487,20 @@ function displayDownloadOptions(data) {
                 downloadOptions.appendChild(option);
             }
         });
+        return;
+    }
+    
+    // Pinterest specific options
+    if (currentPlatform === 'pinterest') {
+        if (data.url) {
+            const option = createDownloadOptionSimple({
+                url: data.url,
+                type: data.type === 'mp4' ? 'Video' : 'Image',
+                desc: `${data.size || ''} • ${data.type || 'file'}`,
+                icon: data.type === 'mp4' ? 'video' : 'image'
+            });
+            downloadOptions.appendChild(option);
+        }
         return;
     }
     
