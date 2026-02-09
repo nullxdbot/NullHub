@@ -144,8 +144,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, AND YouTube with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube') {
+    // Handle TikTok, Instagram, YouTube, AND Facebook with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -164,6 +164,11 @@ function displayResult(data) {
             // For YouTube, use YouTube icon
             avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/240px-YouTube_full-color_icon_%282017%29.svg.png';
             username.textContent = data.channel || 'YouTube';
+            nickname.textContent = ''; // Kosongkan nickname
+        } else if (currentPlatform === 'facebook') {
+            // For Facebook, use Facebook icon
+            avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/2023_Facebook_icon.svg/240px-2023_Facebook_icon.svg.png';
+            username.textContent = 'Facebook Video';
             nickname.textContent = ''; // Kosongkan nickname
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
@@ -190,8 +195,8 @@ function displayResult(data) {
             if (videoItems.length > 0) {
                 hasVideo = true;
             }
-        } else if (currentPlatform === 'youtube') {
-            // YouTube always has video
+        } else if (currentPlatform === 'youtube' || currentPlatform === 'facebook') {
+            // YouTube and Facebook always have video
             hasVideo = true;
         } else {
             // TikTok
@@ -259,6 +264,14 @@ function displayResult(data) {
                     vp.src = data.data.url;
                     vp.poster = data.thumbnail || '';
                 }
+            } else if (currentPlatform === 'facebook') {
+                // Facebook video - use HD quality if available
+                const items = Array.isArray(data) ? data : [data];
+                const hdVideo = items.find(item => item.quality === 'HD');
+                const video = hdVideo || items[0];
+                if (video && video.url) {
+                    vp.src = video.url;
+                }
             } else {
                 if (data.video && data.video !== false) {
                     vp.src = data.video;
@@ -285,6 +298,8 @@ function displayResult(data) {
             captionText.textContent = 'No caption';
         } else if (currentPlatform === 'youtube') {
             captionText.textContent = data.title || 'No caption';
+        } else if (currentPlatform === 'facebook') {
+            captionText.textContent = 'Facebook Video';
         } else {
             captionText.textContent = data.caption || data.title || 'No caption';
         }
@@ -297,8 +312,8 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube') {
-            // Hide entire stats section for Instagram and YouTube
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook') {
+            // Hide entire stats section for Instagram, YouTube, and Facebook
             statsSection.style.display = 'none';
         } else {
             // Show stats for TikTok
@@ -327,6 +342,8 @@ function displayResult(data) {
             if (duration) infoArr.push(duration);
             
             publishedDate.textContent = infoArr.join(' • ');
+        } else if (currentPlatform === 'facebook') {
+            publishedDate.textContent = 'Facebook Video';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -428,6 +445,25 @@ function displayDownloadOptions(data) {
             });
             downloadOptions.appendChild(audioOption);
         }
+        return;
+    }
+    
+    // Facebook specific options
+    if (currentPlatform === 'facebook') {
+        // Facebook data is an array with SD and HD quality
+        const items = Array.isArray(data) ? data : [data];
+        
+        items.forEach((item) => {
+            if (item && item.url && item.response === 200) {
+                const option = createDownloadOptionSimple({
+                    url: item.url,
+                    type: `Video ${item.quality}`,
+                    desc: `Facebook ${item.quality}`,
+                    icon: 'video'
+                });
+                downloadOptions.appendChild(option);
+            }
+        });
         return;
     }
     
