@@ -132,8 +132,16 @@ async function handleDownload() {
             loadingEl.style.display = 'none';
             
             if (data.status && data.data) {
-                currentData = data.data;
-                displayResult(data.data);
+                // For CapCut, caption is at root level, so we need to merge it
+                if (currentPlatform === 'capcut' && data.caption) {
+                    currentData = {
+                        ...data.data,
+                        caption: data.caption
+                    };
+                } else {
+                    currentData = data.data;
+                }
+                displayResult(currentData);
             } else {
                 alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
             }
@@ -151,7 +159,8 @@ function getApiEndpoint(platform) {
         'instagram': 'ig',
         'youtube': 'youtube',
         'facebook': 'fb',
-        'pinterest': 'pin' // Not used, we fetch both pin and pin-v2
+        'pinterest': 'pin', // Not used, we fetch both pin and pin-v2
+        'capcut': 'capcut'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -171,8 +180,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, YouTube, Facebook, AND Pinterest with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest') {
+    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, AND CapCut with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -202,6 +211,11 @@ function displayResult(data) {
             avatar.src = data.author?.image_medium_url || data.author?.image_small_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Pinterest-logo.png/240px-Pinterest-logo.png';
             username.textContent = data.author?.full_name || data.author?.username || 'Pinterest';
             nickname.textContent = data.author?.username ? `@${data.author.username}` : '';
+        } else if (currentPlatform === 'capcut') {
+            // For CapCut, use CapCut icon
+            avatar.src = 'img/CapCut_icon.webp';
+            username.textContent = 'CapCut';
+            nickname.textContent = '';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -227,8 +241,8 @@ function displayResult(data) {
             if (videoItems.length > 0) {
                 hasVideo = true;
             }
-        } else if (currentPlatform === 'youtube' || currentPlatform === 'facebook') {
-            // YouTube and Facebook always have video
+        } else if (currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'capcut') {
+            // YouTube, Facebook, and CapCut always have video
             hasVideo = true;
         } else if (currentPlatform === 'pinterest') {
             // Pinterest - check V1 data for video, V2 for image/GIF
@@ -324,6 +338,11 @@ function displayResult(data) {
                     // Fallback to V2 content (rare case)
                     vp.src = data.content[0].url;
                 }
+            } else if (currentPlatform === 'capcut') {
+                // CapCut video
+                if (data.url) {
+                    vp.src = data.url;
+                }
             } else {
                 if (data.video && data.video !== false) {
                     vp.src = data.video;
@@ -383,8 +402,8 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest') {
-            // Hide entire stats section for Instagram, YouTube, Facebook, and Pinterest
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut') {
+            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, and CapCut
             statsSection.style.display = 'none';
         } else {
             // Show stats for TikTok
@@ -428,6 +447,8 @@ function displayResult(data) {
                 infoArr.push(`${formatNumber(data.author.follower_count)} followers`);
             }
             publishedDate.textContent = infoArr.join(' • ') || 'Pinterest';
+        } else if (currentPlatform === 'capcut') {
+            publishedDate.textContent = 'CapCut Video';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -585,6 +606,20 @@ function displayDownloadOptions(data) {
                     downloadOptions.appendChild(option);
                 }
             });
+        }
+        return;
+    }
+    
+    // CapCut specific options
+    if (currentPlatform === 'capcut') {
+        if (data.url) {
+            const option = createDownloadOptionSimple({
+                url: data.url,
+                type: 'Video',
+                desc: 'CapCut Video',
+                icon: 'video'
+            });
+            downloadOptions.appendChild(option);
         }
         return;
     }
