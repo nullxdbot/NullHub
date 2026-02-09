@@ -315,18 +315,31 @@ function displayResult(data) {
             previewDuration.textContent = '';
             previewViews.textContent = '';
         } else {
-            // For other platforms
-            if (data.thumbnail) {
-                previewThumb.src = data.thumbnail;
+            // For YouTube and other platforms
+            if (currentPlatform === 'youtube') {
+                // YouTube has specific data structure
+                if (data.thumbnail) {
+                    previewThumb.src = data.thumbnail;
+                } else {
+                    previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23FF0000%22 width=%22120%22 height=%2290%22/%3E%3Ctext x=%2260%22 y=%2250%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2216%22%3EYouTube%3C/text%3E%3C/svg%3E';
+                }
+                previewTitle.textContent = data.title || 'YouTube Video';
+                previewAuthor.textContent = data.channel || 'Unknown Channel';
+                previewDuration.textContent = data.fduration || data.duration || '';
+                previewViews.textContent = data.views || '';
             } else {
-                previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
+                // For other platforms
+                if (data.thumbnail) {
+                    previewThumb.src = data.thumbnail;
+                } else {
+                    previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
+                }
+                previewTitle.textContent = data.title || 'Video';
+                previewAuthor.textContent = data.author || 'Unknown';
+                previewDuration.textContent = data.duration || '';
+                previewViews.textContent = data.views ? formatViews(data.views) : '';
             }
-            previewTitle.textContent = data.title || 'Video';
-            previewAuthor.textContent = data.author || 'Unknown';
-            previewDuration.textContent = data.duration || '';
-            previewViews.textContent = data.views ? formatViews(data.views) : '';
         }
-    }
     
     // Display download options
     displayDownloadOptions(data);
@@ -334,6 +347,21 @@ function displayResult(data) {
 
 function displayDownloadOptions(data) {
     downloadOptions.innerHTML = '';
+    
+    // YouTube specific options
+    if (currentPlatform === 'youtube') {
+        // YouTube data has nested structure in data.data
+        if (data.data && data.data.url) {
+            const option = createDownloadOptionSimple({
+                url: data.data.url,
+                type: `Video ${data.data.quality || 'HD'}`,
+                desc: `${data.data.size || 'Unknown size'} • ${data.data.extension || 'mp4'}`,
+                icon: 'video'
+            });
+            downloadOptions.appendChild(option);
+        }
+        return;
+    }
     
     // Instagram specific options
     if (currentPlatform === 'instagram') {
