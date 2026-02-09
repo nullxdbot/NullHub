@@ -69,7 +69,16 @@ async function handleDownload() {
     
     try {
         const endpoint = getApiEndpoint(currentPlatform);
-        const apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+        
+        // Build API URL with platform-specific parameters
+        let apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}`;
+        
+        // Add extra parameters for YouTube
+        if (currentPlatform === 'youtube') {
+            apiUrl += `&type=video&quality=720p`;
+        }
+        
+        apiUrl += `&apikey=${API_KEY}`;
         
         const response = await fetch(apiUrl);
         const data = await response.json();
@@ -79,6 +88,10 @@ async function handleDownload() {
         if (data.status && data.data) {
             currentData = data.data;
             displayResult(data.data);
+        } else if (data.status && currentPlatform === 'youtube') {
+            // YouTube returns data at root level, not nested
+            currentData = data;
+            displayResult(data);
         } else {
             alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
         }
@@ -93,7 +106,7 @@ function getApiEndpoint(platform) {
     const endpoints = {
         'tiktok': 'tiktok',
         'instagram': 'ig',
-        'youtube': 'yt',
+        'youtube': 'youtube',
         'facebook': 'fb'
     };
     return endpoints[platform] || 'tiktok';
