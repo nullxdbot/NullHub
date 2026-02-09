@@ -160,7 +160,8 @@ function getApiEndpoint(platform) {
         'youtube': 'youtube',
         'facebook': 'fb',
         'pinterest': 'pin', // Not used, we fetch both pin and pin-v2
-        'capcut': 'capcut'
+        'capcut': 'capcut',
+        'xiaohongshu': 'xiaohongshu'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -180,8 +181,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, AND CapCut with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut') {
+    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, AND Xiaohongshu with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -216,6 +217,11 @@ function displayResult(data) {
             avatar.src = 'img/CapCut_icon.webp';
             username.textContent = 'CapCut';
             nickname.textContent = '';
+        } else if (currentPlatform === 'xiaohongshu') {
+            // For Xiaohongshu, use Xiaohongshu icon
+            avatar.src = 'img/rednote_icon.webp';
+            username.textContent = 'Xiaohongshu';
+            nickname.textContent = 'RedNote';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -231,6 +237,18 @@ function displayResult(data) {
         
         if (currentPlatform === 'instagram') {
             // Instagram returns array of objects
+            const items = Array.isArray(data) ? data : [data];
+            const photoItems = items.filter(item => item.type !== 'mp4');
+            const videoItems = items.filter(item => item.type === 'mp4');
+            
+            if (photoItems.length > 0) {
+                photoArray = photoItems.map(item => item.url);
+            }
+            if (videoItems.length > 0) {
+                hasVideo = true;
+            }
+        } else if (currentPlatform === 'xiaohongshu') {
+            // Xiaohongshu returns array like Instagram
             const items = Array.isArray(data) ? data : [data];
             const photoItems = items.filter(item => item.type !== 'mp4');
             const videoItems = items.filter(item => item.type === 'mp4');
@@ -316,6 +334,10 @@ function displayResult(data) {
                 const items = Array.isArray(data) ? data : [data];
                 const videoItem = items.find(item => item.type === 'mp4');
                 if (videoItem) vp.src = videoItem.url;
+            } else if (currentPlatform === 'xiaohongshu') {
+                const items = Array.isArray(data) ? data : [data];
+                const videoItem = items.find(item => item.type === 'mp4');
+                if (videoItem) vp.src = videoItem.url;
             } else if (currentPlatform === 'youtube') {
                 // YouTube video from data.data.url
                 if (data.data && data.data.url) {
@@ -367,6 +389,8 @@ function displayResult(data) {
         const captionText = document.getElementById('tiktok-caption-text');
         if (currentPlatform === 'instagram') {
             captionText.textContent = 'No caption';
+        } else if (currentPlatform === 'xiaohongshu') {
+            captionText.textContent = 'Xiaohongshu Post';
         } else if (currentPlatform === 'youtube') {
             captionText.textContent = data.title || 'No caption';
         } else if (currentPlatform === 'facebook') {
@@ -402,8 +426,8 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut') {
-            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, and CapCut
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu') {
+            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, and Xiaohongshu
             statsSection.style.display = 'none';
         } else {
             // Show stats for TikTok
@@ -449,6 +473,8 @@ function displayResult(data) {
             publishedDate.textContent = infoArr.join(' • ') || 'Pinterest';
         } else if (currentPlatform === 'capcut') {
             publishedDate.textContent = 'CapCut Video';
+        } else if (currentPlatform === 'xiaohongshu') {
+            publishedDate.textContent = 'Xiaohongshu';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -620,6 +646,50 @@ function displayDownloadOptions(data) {
                 icon: 'video'
             });
             downloadOptions.appendChild(option);
+        }
+        return;
+    }
+    
+    // Xiaohongshu specific options
+    if (currentPlatform === 'xiaohongshu') {
+        // Xiaohongshu data is an array like Instagram
+        const items = Array.isArray(data) ? data : [data];
+        
+        items.forEach((item, index) => {
+            if (item && item.url) {
+                const option = createDownloadOptionSimple({
+                    url: item.url,
+                    type: item.type === 'mp4' ? `Video ${index + 1}` : `Image ${index + 1}`,
+                    desc: item.type === 'mp4' ? 'Video' : 'Image',
+                    icon: item.type === 'mp4' ? 'video' : 'image'
+                });
+                downloadOptions.appendChild(option);
+            }
+        });
+        
+        // Add option to download all if multiple items
+        if (items.length > 1) {
+            const allOption = document.createElement('div');
+            allOption.className = 'download-option';
+            allOption.innerHTML = `
+                <div class="option-info">
+                    <div class="option-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </div>
+                    <div class="option-text">
+                        <h4>Download All</h4>
+                        <p>${items.length} items</p>
+                    </div>
+                </div>
+                <button class="option-download-btn" onclick="downloadAllXiaohongshu()">
+                    Unduh Semua
+                </button>
+            `;
+            downloadOptions.appendChild(allOption);
         }
         return;
     }
@@ -855,6 +925,28 @@ function downloadAllInstagram() {
                 const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
                 const type = item.type === 'mp4' ? 'Video' : 'Photo';
                 downloadFile(item.url, `Instagram_${type}_${index + 1}.${ext}`);
+            }, index * 500); // 500ms delay between downloads
+        }
+    });
+    
+    showNotification(`Mengunduh ${items.length} item...`);
+}
+
+function downloadAllXiaohongshu() {
+    if (!currentData) {
+        alert('Tidak ada item untuk diunduh');
+        return;
+    }
+    
+    const items = Array.isArray(currentData) ? currentData : [currentData];
+    
+    // Download each item with a small delay
+    items.forEach((item, index) => {
+        if (item && item.url) {
+            setTimeout(() => {
+                const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
+                const type = item.type === 'mp4' ? 'Video' : 'Image';
+                downloadFile(item.url, `Xiaohongshu_${type}_${index + 1}.${ext}`);
             }, index * 500); // 500ms delay between downloads
         }
     });
