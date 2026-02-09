@@ -96,6 +96,32 @@ async function handleDownload() {
             } else {
                 alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
             }
+        } else if (currentPlatform === 'pinterest') {
+            // For Pinterest, fetch both pin (V1 for video) and pin-v2 (for details)
+            const pinV1Url = `${API_BASE_URL}/pin?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+            const pinV2Url = `${API_BASE_URL}/pin-v2?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+            
+            // Fetch both in parallel
+            const [v1Response, v2Response] = await Promise.all([
+                fetch(pinV1Url),
+                fetch(pinV2Url)
+            ]);
+            
+            const v1Data = await v1Response.json();
+            const v2Data = await v2Response.json();
+            
+            loadingEl.style.display = 'none';
+            
+            if (v2Data.status) {
+                // Use V2 as base, add V1 video data if available
+                currentData = {
+                    ...v2Data.data,
+                    v1Data: v1Data.status ? v1Data.data : null // Store V1 data separately for video
+                };
+                displayResult(currentData);
+            } else {
+                alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
+            }
         } else {
             // For other platforms
             let apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
@@ -125,7 +151,7 @@ function getApiEndpoint(platform) {
         'instagram': 'ig',
         'youtube': 'youtube',
         'facebook': 'fb',
-        'pinterest': 'pin-v2'
+        'pinterest': 'pin' // Not used, we fetch both pin and pin-v2
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -205,11 +231,15 @@ function displayResult(data) {
             // YouTube and Facebook always have video
             hasVideo = true;
         } else if (currentPlatform === 'pinterest') {
-            // Pinterest V2 can be video or image
-            if (data.is_video) {
+            // Pinterest - check V1 data for video, V2 for image/GIF
+            if (data.v1Data && data.v1Data.type === 'mp4') {
+                // V1 has MP4 video
+                hasVideo = true;
+            } else if (data.is_video) {
+                // V2 says it's video (rare)
                 hasVideo = true;
             } else if (data.content && Array.isArray(data.content) && data.content.length > 0) {
-                // Image content
+                // V2 has image/GIF content
                 photoArray = data.content.map(item => item.url);
             }
         } else {
@@ -287,8 +317,11 @@ function displayResult(data) {
                     vp.src = video.url;
                 }
             } else if (currentPlatform === 'pinterest') {
-                // Pinterest V2 video - content array contains video URL
-                if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+                // Pinterest - use V1 data for MP4 video
+                if (data.v1Data && data.v1Data.url) {
+                    vp.src = data.v1Data.url;
+                } else if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+                    // Fallback to V2 content (rare case)
                     vp.src = data.content[0].url;
                 }
             } else {
@@ -506,21 +539,27 @@ function displayDownloadOptions(data) {
     
     // Pinterest specific options
     if (currentPlatform === 'pinterest') {
-        // Pinterest V2 returns content array
+        // Add V1 video option if available (MP4)
+        if (data.v1Data && data.v1Data.url && data.v1Data.type === 'mp4') {
+            const videoOption = createDownloadOptionSimple({
+                url: data.v1Data.url,
+                type: 'Video MP4',
+                desc: `${data.v1Data.size || ''} • mp4`,
+                icon: 'video'
+            });
+            downloadOptions.appendChild(videoOption);
+        }
+        
+        // Add V2 content options (image/GIF)
         if (data.content && Array.isArray(data.content)) {
             data.content.forEach((item, index) => {
                 if (item.url) {
-                    const isVideo = data.is_video || item.url.includes('.mp4') || item.url.includes('.mov');
                     const isGif = item.url.includes('.gif');
                     
                     let type = 'Image';
                     let icon = 'image';
-                    if (isVideo) {
-                        type = 'Video';
-                        icon = 'video';
-                    } else if (isGif) {
+                    if (isGif) {
                         type = 'GIF';
-                        icon = 'image';
                     }
                     
                     const option = createDownloadOptionSimple({
