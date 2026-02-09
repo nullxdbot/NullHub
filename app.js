@@ -125,7 +125,7 @@ function getApiEndpoint(platform) {
         'instagram': 'ig',
         'youtube': 'youtube',
         'facebook': 'fb',
-        'pinterest': 'pin'
+        'pinterest': 'pin-v2'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -172,10 +172,10 @@ function displayResult(data) {
             username.textContent = 'Facebook Video';
             nickname.textContent = ''; // Kosongkan nickname
         } else if (currentPlatform === 'pinterest') {
-            // For Pinterest, use Pinterest icon
-            avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Pinterest-logo.png/240px-Pinterest-logo.png';
-            username.textContent = 'Pinterest';
-            nickname.textContent = ''; // Kosongkan nickname
+            // For Pinterest, use author data
+            avatar.src = data.author?.image_medium_url || data.author?.image_small_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Pinterest-logo.png/240px-Pinterest-logo.png';
+            username.textContent = data.author?.full_name || data.author?.username || 'Pinterest';
+            nickname.textContent = data.author?.username ? `@${data.author.username}` : '';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -205,11 +205,12 @@ function displayResult(data) {
             // YouTube and Facebook always have video
             hasVideo = true;
         } else if (currentPlatform === 'pinterest') {
-            // Pinterest can be video or image
-            if (data.type === 'mp4') {
+            // Pinterest V2 can be video or image
+            if (data.is_video) {
                 hasVideo = true;
-            } else {
-                photoArray = [data.url];
+            } else if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+                // Image content
+                photoArray = data.content.map(item => item.url);
             }
         } else {
             // TikTok
@@ -286,9 +287,9 @@ function displayResult(data) {
                     vp.src = video.url;
                 }
             } else if (currentPlatform === 'pinterest') {
-                // Pinterest video
-                if (data.url) {
-                    vp.src = data.url;
+                // Pinterest V2 video - content array contains video URL
+                if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+                    vp.src = data.content[0].url;
                 }
             } else {
                 if (data.video && data.video !== false) {
@@ -319,7 +320,10 @@ function displayResult(data) {
         } else if (currentPlatform === 'facebook') {
             captionText.textContent = 'Facebook Video';
         } else if (currentPlatform === 'pinterest') {
-            captionText.textContent = data.type === 'mp4' ? 'Pinterest Video' : 'Pinterest Image';
+            const title = data.title && data.title !== '-' ? data.title : '';
+            const desc = data.description && data.description !== '-' ? data.description : '';
+            const captionContent = title || desc || (data.is_video ? 'Pinterest Video' : 'Pinterest Image');
+            captionText.textContent = captionContent;
         } else {
             captionText.textContent = data.caption || data.title || 'No caption';
         }
@@ -365,8 +369,18 @@ function displayResult(data) {
         } else if (currentPlatform === 'facebook') {
             publishedDate.textContent = 'Facebook Video';
         } else if (currentPlatform === 'pinterest') {
-            // Show file size for Pinterest
-            publishedDate.textContent = data.size ? `Size: ${data.size}` : 'Pinterest';
+            // Show created date and follower count for Pinterest V2
+            let infoArr = [];
+            if (data.created_at) {
+                // Parse date string like "Wed, 31 Dec 2025 18:53:53 +0000"
+                const date = new Date(data.created_at);
+                const dateStr = date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+                infoArr.push(dateStr);
+            }
+            if (data.author?.follower_count) {
+                infoArr.push(`${formatNumber(data.author.follower_count)} followers`);
+            }
+            publishedDate.textContent = infoArr.join(' • ') || 'Pinterest';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -492,14 +506,32 @@ function displayDownloadOptions(data) {
     
     // Pinterest specific options
     if (currentPlatform === 'pinterest') {
-        if (data.url) {
-            const option = createDownloadOptionSimple({
-                url: data.url,
-                type: data.type === 'mp4' ? 'Video' : 'Image',
-                desc: `${data.size || ''} • ${data.type || 'file'}`,
-                icon: data.type === 'mp4' ? 'video' : 'image'
+        // Pinterest V2 returns content array
+        if (data.content && Array.isArray(data.content)) {
+            data.content.forEach((item, index) => {
+                if (item.url) {
+                    const isVideo = data.is_video || item.url.includes('.mp4') || item.url.includes('.mov');
+                    const isGif = item.url.includes('.gif');
+                    
+                    let type = 'Image';
+                    let icon = 'image';
+                    if (isVideo) {
+                        type = 'Video';
+                        icon = 'video';
+                    } else if (isGif) {
+                        type = 'GIF';
+                        icon = 'image';
+                    }
+                    
+                    const option = createDownloadOptionSimple({
+                        url: item.url,
+                        type: data.content.length > 1 ? `${type} ${index + 1}` : type,
+                        desc: item.width && item.height ? `${item.width}x${item.height}` : 'Pinterest',
+                        icon: icon
+                    });
+                    downloadOptions.appendChild(option);
+                }
             });
-            downloadOptions.appendChild(option);
         }
         return;
     }
