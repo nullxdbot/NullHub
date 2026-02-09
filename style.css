@@ -160,8 +160,10 @@ body::after {
     color: white;
 }
 
-.platform-btn svg {
+.platform-btn svg,
+.platform-btn img {
     flex-shrink: 0;
+    border-radius: 4px;
 }
 
 /* Input Section */
