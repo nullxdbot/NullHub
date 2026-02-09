@@ -70,35 +70,47 @@ async function handleDownload() {
     try {
         const endpoint = getApiEndpoint(currentPlatform);
         
-        // Build API URL
-        let apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}`;
-        
-        // Add YouTube specific parameters
         if (currentPlatform === 'youtube') {
-            apiUrl += '&type=video&quality=720p';
-        }
-        
-        apiUrl += `&apikey=${API_KEY}`;
-        
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        loadingEl.style.display = 'none';
-        
-        if (data.status) {
-            if (currentPlatform === 'youtube') {
-                // YouTube returns data at root level with nested data object
-                currentData = data;
-                displayResult(data);
-            } else if (data.data) {
-                // Other platforms return data in data property
+            // For YouTube, fetch both video and audio
+            const videoUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&type=video&quality=720p&apikey=${API_KEY}`;
+            const audioUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&type=audio&quality=128kbps&apikey=${API_KEY}`;
+            
+            // Fetch both in parallel
+            const [videoResponse, audioResponse] = await Promise.all([
+                fetch(videoUrl),
+                fetch(audioUrl)
+            ]);
+            
+            const videoData = await videoResponse.json();
+            const audioData = await audioResponse.json();
+            
+            loadingEl.style.display = 'none';
+            
+            if (videoData.status && audioData.status) {
+                // Combine both data
+                currentData = {
+                    ...videoData,
+                    audioData: audioData.data // Store audio data separately
+                };
+                displayResult(currentData);
+            } else {
+                alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
+            }
+        } else {
+            // For other platforms
+            let apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+            
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            
+            loadingEl.style.display = 'none';
+            
+            if (data.status && data.data) {
                 currentData = data.data;
                 displayResult(data.data);
             } else {
                 alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
             }
-        } else {
-            alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
         }
     } catch (error) {
         loadingEl.style.display = 'none';
@@ -220,74 +232,51 @@ function displayResult(data) {
             `;
             currentSlideIndex = 0;
         } else {
-            // Video or Audio player
-            const isAudio = currentPlatform === 'youtube' && data.data && data.data.extension === 'mp3';
+            // Video player - always show video for YouTube since we fetch both video and audio
+            videoContainer.innerHTML = `
+                <video id="tiktok-video-player" controls playsinline></video>
+                <div class="video-overlay" id="video-overlay">
+                    <button class="play-btn" id="play-btn">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
             
-            if (isAudio) {
-                // Audio player for YouTube MP3
-                videoContainer.innerHTML = `
-                    <div class="audio-player-container">
-                        <div class="audio-thumbnail">
-                            <img src="${data.thumbnail || ''}" alt="Thumbnail">
-                            <div class="audio-icon">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
-                                    <path d="M9 18V5l12-2v13M9 18c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zm12-2c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <audio id="tiktok-audio-player" controls controlsList="nodownload">
-                            <source src="${data.data.url}" type="audio/mpeg">
-                            Browser Anda tidak mendukung audio player.
-                        </audio>
-                    </div>
-                `;
-            } else {
-                // Video player
-                videoContainer.innerHTML = `
-                    <video id="tiktok-video-player" controls playsinline></video>
-                    <div class="video-overlay" id="video-overlay">
-                        <button class="play-btn" id="play-btn">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
-                                <path d="M8 5v14l11-7z"/>
-                            </svg>
-                        </button>
-                    </div>
-                `;
-                
-                const vp = document.getElementById('tiktok-video-player');
-                const vo = document.getElementById('video-overlay');
-                const pb = document.getElementById('play-btn');
-                
-                // Set video source
-                if (currentPlatform === 'instagram') {
-                    const items = Array.isArray(data) ? data : [data];
-                    const videoItem = items.find(item => item.type === 'mp4');
-                    if (videoItem) vp.src = videoItem.url;
-                } else if (currentPlatform === 'youtube') {
-                    // YouTube video from data.data.url
-                    if (data.data && data.data.url) {
-                        vp.src = data.data.url;
-                        vp.poster = data.thumbnail || '';
-                    }
-                } else {
-                    if (data.video && data.video !== false) {
-                        vp.src = data.video;
-                    } else if (data.videoWM && data.videoWM !== false) {
-                        vp.src = data.videoWM;
-                    }
+            const vp = document.getElementById('tiktok-video-player');
+            const vo = document.getElementById('video-overlay');
+            const pb = document.getElementById('play-btn');
+            
+            // Set video source
+            if (currentPlatform === 'instagram') {
+                const items = Array.isArray(data) ? data : [data];
+                const videoItem = items.find(item => item.type === 'mp4');
+                if (videoItem) vp.src = videoItem.url;
+            } else if (currentPlatform === 'youtube') {
+                // YouTube video from data.data.url
+                if (data.data && data.data.url) {
+                    vp.src = data.data.url;
+                    vp.poster = data.thumbnail || '';
                 }
-                
-                pb.addEventListener('click', () => {
-                    vp.play();
-                    vo.classList.add('hidden');
-                });
-                vo.addEventListener('click', () => {
-                    vp.play();
-                    vo.classList.add('hidden');
-                });
-                vp.addEventListener('play', () => vo.classList.add('hidden'));
-                vp.addEventListener('pause', () => vo.classList.remove('hidden'));
+            } else {
+                if (data.video && data.video !== false) {
+                    vp.src = data.video;
+                } else if (data.videoWM && data.videoWM !== false) {
+                    vp.src = data.videoWM;
+                }
             }
+            
+            pb.addEventListener('click', () => {
+                vp.play();
+                vo.classList.add('hidden');
+            });
+            vo.addEventListener('click', () => {
+                vp.play();
+                vo.classList.add('hidden');
+            });
+            vp.addEventListener('play', () => vo.classList.add('hidden'));
+            vp.addEventListener('pause', () => vo.classList.remove('hidden'));
         }
         
         // Caption
@@ -418,15 +407,26 @@ function displayDownloadOptions(data) {
     
     // YouTube specific options
     if (currentPlatform === 'youtube') {
+        // Add video option
         if (data.data && data.data.url) {
-            const isAudio = data.data.extension === 'mp3';
-            const option = createDownloadOptionSimple({
+            const videoOption = createDownloadOptionSimple({
                 url: data.data.url,
-                type: isAudio ? `Audio ${data.data.quality || '128kbps'}` : `Video ${data.data.quality || 'HD'}`,
+                type: `Video ${data.data.quality || '720p'}`,
                 desc: `${data.data.size || ''} • ${data.data.extension || 'mp4'}`,
-                icon: isAudio ? 'audio' : 'video'
+                icon: 'video'
             });
-            downloadOptions.appendChild(option);
+            downloadOptions.appendChild(videoOption);
+        }
+        
+        // Add audio option
+        if (data.audioData && data.audioData.url) {
+            const audioOption = createDownloadOptionSimple({
+                url: data.audioData.url,
+                type: `Audio ${data.audioData.quality || '128kbps'}`,
+                desc: `${data.audioData.size || ''} • ${data.audioData.extension || 'mp3'}`,
+                icon: 'audio'
+            });
+            downloadOptions.appendChild(audioOption);
         }
         return;
     }
