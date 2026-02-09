@@ -220,51 +220,74 @@ function displayResult(data) {
             `;
             currentSlideIndex = 0;
         } else {
-            // Video player
-            videoContainer.innerHTML = `
-                <video id="tiktok-video-player" controls playsinline></video>
-                <div class="video-overlay" id="video-overlay">
-                    <button class="play-btn" id="play-btn">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                    </button>
-                </div>
-            `;
+            // Video or Audio player
+            const isAudio = currentPlatform === 'youtube' && data.data && data.data.extension === 'mp3';
             
-            const vp = document.getElementById('tiktok-video-player');
-            const vo = document.getElementById('video-overlay');
-            const pb = document.getElementById('play-btn');
-            
-            // Set video source
-            if (currentPlatform === 'instagram') {
-                const items = Array.isArray(data) ? data : [data];
-                const videoItem = items.find(item => item.type === 'mp4');
-                if (videoItem) vp.src = videoItem.url;
-            } else if (currentPlatform === 'youtube') {
-                // YouTube video from data.data.url
-                if (data.data && data.data.url) {
-                    vp.src = data.data.url;
-                    vp.poster = data.thumbnail || '';
-                }
+            if (isAudio) {
+                // Audio player for YouTube MP3
+                videoContainer.innerHTML = `
+                    <div class="audio-player-container">
+                        <div class="audio-thumbnail">
+                            <img src="${data.thumbnail || ''}" alt="Thumbnail">
+                            <div class="audio-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
+                                    <path d="M9 18V5l12-2v13M9 18c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zm12-2c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <audio id="tiktok-audio-player" controls controlsList="nodownload">
+                            <source src="${data.data.url}" type="audio/mpeg">
+                            Browser Anda tidak mendukung audio player.
+                        </audio>
+                    </div>
+                `;
             } else {
-                if (data.video && data.video !== false) {
-                    vp.src = data.video;
-                } else if (data.videoWM && data.videoWM !== false) {
-                    vp.src = data.videoWM;
+                // Video player
+                videoContainer.innerHTML = `
+                    <video id="tiktok-video-player" controls playsinline></video>
+                    <div class="video-overlay" id="video-overlay">
+                        <button class="play-btn" id="play-btn">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                
+                const vp = document.getElementById('tiktok-video-player');
+                const vo = document.getElementById('video-overlay');
+                const pb = document.getElementById('play-btn');
+                
+                // Set video source
+                if (currentPlatform === 'instagram') {
+                    const items = Array.isArray(data) ? data : [data];
+                    const videoItem = items.find(item => item.type === 'mp4');
+                    if (videoItem) vp.src = videoItem.url;
+                } else if (currentPlatform === 'youtube') {
+                    // YouTube video from data.data.url
+                    if (data.data && data.data.url) {
+                        vp.src = data.data.url;
+                        vp.poster = data.thumbnail || '';
+                    }
+                } else {
+                    if (data.video && data.video !== false) {
+                        vp.src = data.video;
+                    } else if (data.videoWM && data.videoWM !== false) {
+                        vp.src = data.videoWM;
+                    }
                 }
+                
+                pb.addEventListener('click', () => {
+                    vp.play();
+                    vo.classList.add('hidden');
+                });
+                vo.addEventListener('click', () => {
+                    vp.play();
+                    vo.classList.add('hidden');
+                });
+                vp.addEventListener('play', () => vo.classList.add('hidden'));
+                vp.addEventListener('pause', () => vo.classList.remove('hidden'));
             }
-            
-            pb.addEventListener('click', () => {
-                vp.play();
-                vo.classList.add('hidden');
-            });
-            vo.addEventListener('click', () => {
-                vp.play();
-                vo.classList.add('hidden');
-            });
-            vp.addEventListener('play', () => vo.classList.add('hidden'));
-            vp.addEventListener('pause', () => vo.classList.remove('hidden'));
         }
         
         // Caption
@@ -304,10 +327,17 @@ function displayResult(data) {
             publishedDate.textContent = 'Instagram Post';
         } else if (currentPlatform === 'youtube') {
             // YouTube returns publish string like "2026-2-8 (1 day ago)"
-            const publishText = data.publish ? data.publish.split('(')[1]?.replace(')', '') || data.publish : '';
-            const views = data.views || '0';
+            const publishText = data.publish ? (data.publish.split('(')[1]?.replace(')', '').trim() || data.publish) : '';
+            const views = data.views || '';
             const duration = data.fduration || data.duration || '';
-            publishedDate.textContent = `${publishText} • ${views} views • ${duration}`;
+            
+            // Build info string
+            let infoArr = [];
+            if (publishText) infoArr.push(publishText);
+            if (views) infoArr.push(`${views} views`);
+            if (duration) infoArr.push(duration);
+            
+            publishedDate.textContent = infoArr.join(' • ');
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -389,11 +419,12 @@ function displayDownloadOptions(data) {
     // YouTube specific options
     if (currentPlatform === 'youtube') {
         if (data.data && data.data.url) {
+            const isAudio = data.data.extension === 'mp3';
             const option = createDownloadOptionSimple({
                 url: data.data.url,
-                type: `Video ${data.data.quality || 'HD'}`,
+                type: isAudio ? `Audio ${data.data.quality || '128kbps'}` : `Video ${data.data.quality || 'HD'}`,
                 desc: `${data.data.size || ''} • ${data.data.extension || 'mp4'}`,
-                icon: 'video'
+                icon: isAudio ? 'audio' : 'video'
             });
             downloadOptions.appendChild(option);
         }
@@ -648,10 +679,18 @@ function getQualityFromType(type) {
 }
 
 function downloadFile(url, quality) {
+    // Determine file extension based on URL or quality name
+    let extension = 'mp4';
+    if (url.includes('.mp3') || quality.toLowerCase().includes('audio') || quality.toLowerCase().includes('mp3')) {
+        extension = 'mp3';
+    } else if (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png')) {
+        extension = url.split('.').pop().split('?')[0];
+    }
+    
     // Create temporary link to trigger download
     const a = document.createElement('a');
     a.href = url;
-    a.download = `NullHub_${quality}_${Date.now()}.mp4`;
+    a.download = `NullHub_${quality}_${Date.now()}.${extension}`;
     a.target = '_blank';
     document.body.appendChild(a);
     a.click();
