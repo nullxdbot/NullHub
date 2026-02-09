@@ -85,13 +85,18 @@ async function handleDownload() {
         
         loadingEl.style.display = 'none';
         
-        if (data.status && data.data) {
-            currentData = data.data;
-            displayResult(data.data);
-        } else if (data.status && currentPlatform === 'youtube') {
-            // YouTube returns data at root level
-            currentData = data;
-            displayResult(data);
+        if (data.status) {
+            if (currentPlatform === 'youtube') {
+                // YouTube returns data at root level with nested data object
+                currentData = data;
+                displayResult(data);
+            } else if (data.data) {
+                // Other platforms return data in data property
+                currentData = data.data;
+                displayResult(data.data);
+            } else {
+                alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
+            }
         } else {
             alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
         }
