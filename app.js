@@ -126,10 +126,10 @@ function displayResult(data) {
         const nickname = document.getElementById('tiktok-nickname');
         
         if (currentPlatform === 'instagram') {
-            // For Instagram, use default avatar
-            avatar.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23833AB4%22/%3E%3Ctext x=%2250%22 y=%2260%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22%3EIG%3C/text%3E%3C/svg%3E';
-            username.textContent = 'Instagram User';
-            nickname.textContent = '@instagram';
+            // For Instagram, use Instagram icon
+            avatar.src = 'img/Instagram_icon.webp';
+            username.textContent = 'Instagram Downloader';
+            nickname.textContent = ''; // Kosongkan nickname
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -240,6 +240,7 @@ function displayResult(data) {
         captionText.textContent = (currentPlatform === 'instagram') ? 'No caption' : (data.caption || data.title || 'No caption');
         
         // Statistics
+        const statsSection = document.querySelector('.tiktok-stats');
         const likes = document.getElementById('tiktok-likes');
         const comments = document.getElementById('tiktok-comments');
         const views = document.getElementById('tiktok-views');
@@ -247,12 +248,11 @@ function displayResult(data) {
         const saved = document.getElementById('tiktok-saved');
         
         if (currentPlatform === 'instagram') {
-            likes.textContent = '-';
-            comments.textContent = '-';
-            views.textContent = '-';
-            shares.textContent = '-';
-            saved.textContent = '-';
+            // Hide entire stats section for Instagram
+            statsSection.style.display = 'none';
         } else {
+            // Show stats for TikTok
+            statsSection.style.display = 'flex';
             likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
             comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
             views.textContent = data.statistic?.views ? formatNumber(data.statistic.views) : '0';
