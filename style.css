@@ -276,6 +276,7 @@ body::after {
     right: -320px;
     width: 320px;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
     background: rgba(15, 15, 30, 0.98);
     backdrop-filter: blur(32px);
     border-left: 1px solid rgba(139, 92, 246, 0.2);
@@ -285,6 +286,24 @@ body::after {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.4);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.6);
 }
 
 .sidebar.active {
@@ -332,11 +351,10 @@ body::after {
 
 /* Sidebar Navigation */
 .sidebar-nav {
-    flex: 1;
-    padding: 16px;
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .nav-item {
@@ -395,7 +413,9 @@ body::after {
 
 /* Sidebar Footer */
 .sidebar-footer {
-    padding: 20px;
+    margin-top: auto;
+    padding: 24px 20px;
+    padding-bottom: 32px;
     border-top: 1px solid rgba(139, 92, 246, 0.15);
     background: rgba(22, 22, 38, 0.5);
 }
