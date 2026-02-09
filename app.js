@@ -285,20 +285,9 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram') {
-            // Hide entire stats section for Instagram
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube') {
+            // Hide entire stats section for Instagram and YouTube
             statsSection.style.display = 'none';
-        } else if (currentPlatform === 'youtube') {
-            // Show only views for YouTube
-            statsSection.style.display = 'flex';
-            likes.textContent = '0';
-            comments.textContent = '0';
-            // Parse views string like "26.928" to number
-            const viewsStr = data.views || '0';
-            const viewsNum = parseFloat(viewsStr.replace(/\./g, '').replace(/,/g, ''));
-            views.textContent = formatNumber(viewsNum);
-            shares.textContent = '0';
-            saved.textContent = '0';
         } else {
             // Show stats for TikTok
             statsSection.style.display = 'flex';
@@ -315,7 +304,10 @@ function displayResult(data) {
             publishedDate.textContent = 'Instagram Post';
         } else if (currentPlatform === 'youtube') {
             // YouTube returns publish string like "2026-2-8 (1 day ago)"
-            publishedDate.textContent = data.publish ? data.publish.split('(')[1]?.replace(')', '') || data.publish : '';
+            const publishText = data.publish ? data.publish.split('(')[1]?.replace(')', '') || data.publish : '';
+            const views = data.views || '0';
+            const duration = data.fduration || data.duration || '';
+            publishedDate.textContent = `${publishText} • ${views} views • ${duration}`;
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
