@@ -355,7 +355,21 @@ function displayResult(data) {
         } else if (currentPlatform === 'pinterest') {
             const title = data.title && data.title !== '-' ? data.title : '';
             const desc = data.description && data.description !== '-' ? data.description : '';
-            const captionContent = title || desc || (data.is_video ? 'Pinterest Video' : 'Pinterest Image');
+            
+            // Determine content type
+            let contentType = '';
+            if (data.v1Data && data.v1Data.type === 'mp4') {
+                contentType = 'Video';
+            } else if (data.is_video) {
+                contentType = 'Video';
+            } else if (data.content && data.content[0]?.url.includes('.gif')) {
+                contentType = 'GIF';
+            } else if (data.content && data.content.length > 0) {
+                contentType = 'Image';
+            }
+            
+            // Use title/desc if available, otherwise show content type
+            const captionContent = title || desc || (contentType ? `Pinterest ${contentType}` : 'Pinterest');
             captionText.textContent = captionContent;
         } else {
             captionText.textContent = data.caption || data.title || 'No caption';
