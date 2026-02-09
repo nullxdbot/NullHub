@@ -69,7 +69,16 @@ async function handleDownload() {
     
     try {
         const endpoint = getApiEndpoint(currentPlatform);
-        const apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+        
+        // Build API URL
+        let apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}`;
+        
+        // Add YouTube specific parameters
+        if (currentPlatform === 'youtube') {
+            apiUrl += '&type=video&quality=720p';
+        }
+        
+        apiUrl += `&apikey=${API_KEY}`;
         
         const response = await fetch(apiUrl);
         const data = await response.json();
@@ -79,6 +88,10 @@ async function handleDownload() {
         if (data.status && data.data) {
             currentData = data.data;
             displayResult(data.data);
+        } else if (data.status && currentPlatform === 'youtube') {
+            // YouTube returns data at root level
+            currentData = data;
+            displayResult(data);
         } else {
             alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
         }
@@ -93,7 +106,7 @@ function getApiEndpoint(platform) {
     const endpoints = {
         'tiktok': 'tiktok',
         'instagram': 'ig',
-        'youtube': 'yt',
+        'youtube': 'youtube',
         'facebook': 'fb'
     };
     return endpoints[platform] || 'tiktok';
@@ -314,6 +327,13 @@ function displayResult(data) {
             previewAuthor.textContent = 'Instagram';
             previewDuration.textContent = '';
             previewViews.textContent = '';
+        } else if (currentPlatform === 'youtube') {
+            // For YouTube
+            previewThumb.src = data.thumbnail || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23FF0000%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
+            previewTitle.textContent = data.title || 'YouTube Video';
+            previewAuthor.textContent = data.channel || 'Unknown';
+            previewDuration.textContent = data.fduration || data.duration || '';
+            previewViews.textContent = data.views || '';
         } else {
             // For other platforms
             if (data.thumbnail) {
@@ -334,6 +354,20 @@ function displayResult(data) {
 
 function displayDownloadOptions(data) {
     downloadOptions.innerHTML = '';
+    
+    // YouTube specific options
+    if (currentPlatform === 'youtube') {
+        if (data.data && data.data.url) {
+            const option = createDownloadOptionSimple({
+                url: data.data.url,
+                type: `Video ${data.data.quality || 'HD'}`,
+                desc: `${data.data.size || ''} • ${data.data.extension || 'mp4'}`,
+                icon: 'video'
+            });
+            downloadOptions.appendChild(option);
+        }
+        return;
+    }
     
     // Instagram specific options
     if (currentPlatform === 'instagram') {
