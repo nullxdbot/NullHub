@@ -487,51 +487,17 @@ function displayResult(data) {
         }
         
         // Published Date
+        const publishedSection = document.getElementById('tiktok-published');
         const publishedDate = document.getElementById('tiktok-date');
-        if (currentPlatform === 'instagram') {
-            publishedDate.textContent = 'Instagram Post';
-        } else if (currentPlatform === 'youtube') {
-            // YouTube returns publish string like "2026-2-8 (1 day ago)"
-            const publishText = data.publish ? (data.publish.split('(')[1]?.replace(')', '').trim() || data.publish) : '';
-            const views = data.views || '';
-            const duration = data.fduration || data.duration || '';
-            
-            // Build info string
-            let infoArr = [];
-            if (publishText) infoArr.push(publishText);
-            if (views) infoArr.push(`${views} views`);
-            if (duration) infoArr.push(duration);
-            
-            publishedDate.textContent = infoArr.join(' • ');
-        } else if (currentPlatform === 'facebook') {
-            publishedDate.textContent = 'Facebook Video';
-        } else if (currentPlatform === 'pinterest') {
-            // Show created date and follower count for Pinterest V2
-            let infoArr = [];
-            if (data.created_at) {
-                // Parse date string like "Wed, 31 Dec 2025 18:53:53 +0000"
-                const date = new Date(data.created_at);
-                const dateStr = date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
-                infoArr.push(dateStr);
-            }
-            if (data.author?.follower_count) {
-                infoArr.push(`${formatNumber(data.author.follower_count)} followers`);
-            }
-            publishedDate.textContent = infoArr.join(' • ') || 'Pinterest';
-        } else if (currentPlatform === 'capcut') {
-            publishedDate.textContent = 'CapCut Video';
-        } else if (currentPlatform === 'xiaohongshu') {
-            publishedDate.textContent = 'Xiaohongshu';
-        } else if (currentPlatform === 'threads') {
-            publishedDate.textContent = 'Threads';
-        } else if (currentPlatform === 'pixiv') {
-            // Show tags for Pixiv
-            const tags = data.tags?.tags || [];
-            const tagNames = tags.slice(0, 3).map(t => t.tag).join(', ');
-            publishedDate.textContent = tagNames || 'Pixiv Artwork';
-        } else if (data.published) {
+        
+        // Only show published date for TikTok (which has actual timestamp)
+        if (currentPlatform === 'tiktok' && data.published) {
+            publishedSection.style.display = 'flex';
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
+        } else {
+            // Hide published date section for all other platforms
+            publishedSection.style.display = 'none';
         }
         
         // Music Info
