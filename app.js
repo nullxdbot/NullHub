@@ -163,7 +163,8 @@ function getApiEndpoint(platform) {
         'capcut': 'capcut',
         'xiaohongshu': 'xiaohongshu',
         'douyin': 'douyin',
-        'threads': 'threads'
+        'threads': 'threads',
+        'pixiv': 'pixiv'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -183,8 +184,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, AND Threads with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads') {
+    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, Threads, AND Pixiv with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads' || currentPlatform === 'pixiv') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -234,6 +235,11 @@ function displayResult(data) {
             avatar.src = 'img/Threads_icon.webp';
             username.textContent = 'Threads';
             nickname.textContent = '';
+        } else if (currentPlatform === 'pixiv') {
+            // For Pixiv, use Pixiv icon and author data
+            avatar.src = 'img/pixiv_icon.webp';
+            username.textContent = data.author?.name || 'Pixiv';
+            nickname.textContent = data.author?.username ? `@${data.author.username}` : '';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -297,6 +303,11 @@ function displayResult(data) {
             } else if (data.content && Array.isArray(data.content) && data.content.length > 0) {
                 // V2 has image/GIF content
                 photoArray = data.content.map(item => item.url);
+            }
+        } else if (currentPlatform === 'pixiv') {
+            // Pixiv has images array (always images, no video)
+            if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+                photoArray = data.images;
             }
         } else {
             // TikTok
@@ -423,6 +434,10 @@ function displayResult(data) {
             captionText.textContent = data.caption || data.title || 'Douyin Video';
         } else if (currentPlatform === 'threads') {
             captionText.textContent = 'Threads Post';
+        } else if (currentPlatform === 'pixiv') {
+            const title = data.title || '';
+            const desc = data.description || '';
+            captionText.textContent = title || desc || 'Pixiv Artwork';
         } else if (currentPlatform === 'youtube') {
             captionText.textContent = data.title || 'No caption';
         } else if (currentPlatform === 'facebook') {
@@ -458,8 +473,8 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads') {
-            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, and Threads
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads' || currentPlatform === 'pixiv') {
+            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, Threads, and Pixiv
             statsSection.style.display = 'none';
         } else {
             // Show stats for TikTok
@@ -509,6 +524,11 @@ function displayResult(data) {
             publishedDate.textContent = 'Xiaohongshu';
         } else if (currentPlatform === 'threads') {
             publishedDate.textContent = 'Threads';
+        } else if (currentPlatform === 'pixiv') {
+            // Show tags for Pixiv
+            const tags = data.tags?.tags || [];
+            const tagNames = tags.slice(0, 3).map(t => t.tag).join(', ');
+            publishedDate.textContent = tagNames || 'Pixiv Artwork';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -768,6 +788,47 @@ function displayDownloadOptions(data) {
                 </button>
             `;
             downloadOptions.appendChild(allOption);
+        }
+        return;
+    }
+    
+    // Pixiv specific options
+    if (currentPlatform === 'pixiv') {
+        if (data.images && Array.isArray(data.images)) {
+            data.images.forEach((imageUrl, index) => {
+                const option = createDownloadOptionSimple({
+                    url: imageUrl,
+                    type: data.images.length > 1 ? `Image ${index + 1}` : 'Image',
+                    desc: 'Pixiv Artwork',
+                    icon: 'image'
+                });
+                downloadOptions.appendChild(option);
+            });
+            
+            // Add option to download all if multiple images
+            if (data.images.length > 1) {
+                const allOption = document.createElement('div');
+                allOption.className = 'download-option';
+                allOption.innerHTML = `
+                    <div class="option-info">
+                        <div class="option-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                        <div class="option-text">
+                            <h4>Download All</h4>
+                            <p>${data.images.length} images</p>
+                        </div>
+                    </div>
+                    <button class="option-download-btn" onclick="downloadAllPixiv()">
+                        Unduh Semua
+                    </button>
+                `;
+                downloadOptions.appendChild(allOption);
+            }
         }
         return;
     }
@@ -1052,6 +1113,24 @@ function downloadAllThreads() {
     });
     
     showNotification(`Mengunduh ${items.length} item...`);
+}
+
+function downloadAllPixiv() {
+    if (!currentData || !currentData.images) {
+        alert('Tidak ada gambar untuk diunduh');
+        return;
+    }
+    
+    const images = currentData.images;
+    
+    // Download each image with a small delay
+    images.forEach((imageUrl, index) => {
+        setTimeout(() => {
+            downloadFile(imageUrl, `Pixiv_Image_${index + 1}.jpg`);
+        }, index * 500); // 500ms delay between downloads
+    });
+    
+    showNotification(`Mengunduh ${images.length} gambar...`);
 }
 
 function getQualityFromType(type) {
