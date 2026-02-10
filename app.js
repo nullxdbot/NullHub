@@ -162,7 +162,8 @@ function getApiEndpoint(platform) {
         'pinterest': 'pin', // Not used, we fetch both pin and pin-v2
         'capcut': 'capcut',
         'xiaohongshu': 'xiaohongshu',
-        'douyin': 'douyin'
+        'douyin': 'douyin',
+        'threads': 'threads'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -182,8 +183,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, AND Douyin with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin') {
+    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, AND Threads with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -228,6 +229,11 @@ function displayResult(data) {
             avatar.src = 'img/TikTok_icon.webp';
             username.textContent = 'Douyin';
             nickname.textContent = '抖音';
+        } else if (currentPlatform === 'threads') {
+            // For Threads, use Threads icon
+            avatar.src = 'img/Threads_icon.webp';
+            username.textContent = 'Threads';
+            nickname.textContent = '';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -255,6 +261,18 @@ function displayResult(data) {
             }
         } else if (currentPlatform === 'xiaohongshu') {
             // Xiaohongshu returns array like Instagram
+            const items = Array.isArray(data) ? data : [data];
+            const photoItems = items.filter(item => item.type !== 'mp4');
+            const videoItems = items.filter(item => item.type === 'mp4');
+            
+            if (photoItems.length > 0) {
+                photoArray = photoItems.map(item => item.url);
+            }
+            if (videoItems.length > 0) {
+                hasVideo = true;
+            }
+        } else if (currentPlatform === 'threads') {
+            // Threads returns array like Instagram
             const items = Array.isArray(data) ? data : [data];
             const photoItems = items.filter(item => item.type !== 'mp4');
             const videoItems = items.filter(item => item.type === 'mp4');
@@ -344,6 +362,10 @@ function displayResult(data) {
                 const items = Array.isArray(data) ? data : [data];
                 const videoItem = items.find(item => item.type === 'mp4');
                 if (videoItem) vp.src = videoItem.url;
+            } else if (currentPlatform === 'threads') {
+                const items = Array.isArray(data) ? data : [data];
+                const videoItem = items.find(item => item.type === 'mp4');
+                if (videoItem) vp.src = videoItem.url;
             } else if (currentPlatform === 'youtube') {
                 // YouTube video from data.data.url
                 if (data.data && data.data.url) {
@@ -399,6 +421,8 @@ function displayResult(data) {
             captionText.textContent = 'Xiaohongshu Post';
         } else if (currentPlatform === 'douyin') {
             captionText.textContent = data.caption || data.title || 'Douyin Video';
+        } else if (currentPlatform === 'threads') {
+            captionText.textContent = 'Threads Post';
         } else if (currentPlatform === 'youtube') {
             captionText.textContent = data.title || 'No caption';
         } else if (currentPlatform === 'facebook') {
@@ -434,8 +458,8 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin') {
-            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, and Douyin
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads') {
+            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, and Threads
             statsSection.style.display = 'none';
         } else {
             // Show stats for TikTok
@@ -483,6 +507,8 @@ function displayResult(data) {
             publishedDate.textContent = 'CapCut Video';
         } else if (currentPlatform === 'xiaohongshu') {
             publishedDate.textContent = 'Xiaohongshu';
+        } else if (currentPlatform === 'threads') {
+            publishedDate.textContent = 'Threads';
         } else if (data.published) {
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
@@ -694,6 +720,50 @@ function displayDownloadOptions(data) {
                     </div>
                 </div>
                 <button class="option-download-btn" onclick="downloadAllXiaohongshu()">
+                    Unduh Semua
+                </button>
+            `;
+            downloadOptions.appendChild(allOption);
+        }
+        return;
+    }
+    
+    // Threads specific options
+    if (currentPlatform === 'threads') {
+        // Threads data is an array like Instagram
+        const items = Array.isArray(data) ? data : [data];
+        
+        items.forEach((item, index) => {
+            if (item && item.url) {
+                const option = createDownloadOptionSimple({
+                    url: item.url,
+                    type: item.type === 'mp4' ? `Video ${index + 1}` : `Image ${index + 1}`,
+                    desc: item.type === 'mp4' ? 'Video' : 'Image',
+                    icon: item.type === 'mp4' ? 'video' : 'image'
+                });
+                downloadOptions.appendChild(option);
+            }
+        });
+        
+        // Add option to download all if multiple items
+        if (items.length > 1) {
+            const allOption = document.createElement('div');
+            allOption.className = 'download-option';
+            allOption.innerHTML = `
+                <div class="option-info">
+                    <div class="option-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </div>
+                    <div class="option-text">
+                        <h4>Download All</h4>
+                        <p>${items.length} items</p>
+                    </div>
+                </div>
+                <button class="option-download-btn" onclick="downloadAllThreads()">
                     Unduh Semua
                 </button>
             `;
@@ -955,6 +1025,28 @@ function downloadAllXiaohongshu() {
                 const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
                 const type = item.type === 'mp4' ? 'Video' : 'Image';
                 downloadFile(item.url, `Xiaohongshu_${type}_${index + 1}.${ext}`);
+            }, index * 500); // 500ms delay between downloads
+        }
+    });
+    
+    showNotification(`Mengunduh ${items.length} item...`);
+}
+
+function downloadAllThreads() {
+    if (!currentData) {
+        alert('Tidak ada item untuk diunduh');
+        return;
+    }
+    
+    const items = Array.isArray(currentData) ? currentData : [currentData];
+    
+    // Download each item with a small delay
+    items.forEach((item, index) => {
+        if (item && item.url) {
+            setTimeout(() => {
+                const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
+                const type = item.type === 'mp4' ? 'Video' : 'Image';
+                downloadFile(item.url, `Threads_${type}_${index + 1}.${ext}`);
             }, index * 500); // 500ms delay between downloads
         }
     });
