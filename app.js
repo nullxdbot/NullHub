@@ -161,7 +161,8 @@ function getApiEndpoint(platform) {
         'facebook': 'fb',
         'pinterest': 'pin', // Not used, we fetch both pin and pin-v2
         'capcut': 'capcut',
-        'xiaohongshu': 'xiaohongshu'
+        'xiaohongshu': 'xiaohongshu',
+        'douyin': 'douyin'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -181,8 +182,8 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
     
-    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, AND Xiaohongshu with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu') {
+    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, AND Douyin with same card style
+    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin') {
         // Show TikTok card, hide regular preview
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
@@ -222,6 +223,11 @@ function displayResult(data) {
             avatar.src = 'img/rednote_icon.webp';
             username.textContent = 'Xiaohongshu';
             nickname.textContent = 'RedNote';
+        } else if (currentPlatform === 'douyin') {
+            // For Douyin, use TikTok icon (same app, China version)
+            avatar.src = 'img/TikTok_icon.webp';
+            username.textContent = 'Douyin';
+            nickname.textContent = '抖音';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -391,6 +397,8 @@ function displayResult(data) {
             captionText.textContent = 'No caption';
         } else if (currentPlatform === 'xiaohongshu') {
             captionText.textContent = 'Xiaohongshu Post';
+        } else if (currentPlatform === 'douyin') {
+            captionText.textContent = data.caption || data.title || 'Douyin Video';
         } else if (currentPlatform === 'youtube') {
             captionText.textContent = data.title || 'No caption';
         } else if (currentPlatform === 'facebook') {
@@ -430,7 +438,7 @@ function displayResult(data) {
             // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, and Xiaohongshu
             statsSection.style.display = 'none';
         } else {
-            // Show stats for TikTok
+            // Show stats for TikTok and Douyin
             statsSection.style.display = 'flex';
             likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
             comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
