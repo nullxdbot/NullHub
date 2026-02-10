@@ -434,11 +434,11 @@ function displayResult(data) {
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
         
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu') {
-            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, and Xiaohongshu
+        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin') {
+            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, and Douyin
             statsSection.style.display = 'none';
         } else {
-            // Show stats for TikTok and Douyin
+            // Show stats for TikTok
             statsSection.style.display = 'flex';
             likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
             comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
