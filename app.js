@@ -1127,7 +1127,7 @@ function downloadFile(url, quality) {
     document.body.removeChild(a);
     
     // Show notification
-    showNotification('Download dimulai! Periksa folder download Anda.');
+    showNotification('Download dimulai! Periksa folder download Anda.', 'success');
 }
 
 function formatViews(views) {
@@ -1222,6 +1222,119 @@ style.textContent = `
             transform: translateX(-50%) translateY(100px);
             opacity: 0;
         }
+    }
+`;
+document.head.appendChild(style);
+
+// Enhanced Toast Notification System
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    
+    const icons = {
+        success: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>`,
+        error: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>`,
+        info: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>`
+    };
+    
+    const colors = {
+        success: 'linear-gradient(135deg, #10b981, #059669)',
+        error: 'linear-gradient(135deg, #ef4444, #dc2626)',
+        info: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+    };
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+            ${icons[type] || icons.info}
+            <span>${message}</span>
+        </div>
+        <div class="toast-progress"></div>
+    `;
+    
+    notification.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${colors[type] || colors.info};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 16px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        z-index: 10000;
+        animation: slideUpBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        backdrop-filter: blur(10px);
+        min-width: 300px;
+        max-width: 500px;
+    `;
+    
+    const progressBar = notification.querySelector('.toast-progress');
+    if (progressBar) {
+        progressBar.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 0 0 16px 16px;
+            animation: toastProgress 3s linear;
+        `;
+    }
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideDownBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 500);
+    }, 3000);
+}
+
+// Add enhanced animation styles
+const enhancedStyle = document.createElement('style');
+enhancedStyle.textContent = `
+    @keyframes slideUpBounce {
+        0% {
+            transform: translateX(-50%) translateY(100px);
+            opacity: 0;
+        }
+        60% {
+            transform: translateX(-50%) translateY(-10px);
+        }
+        100% {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideDownBounce {
+        0% {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateX(-50%) translateY(100px);
+            opacity: 0;
+        }
+    }
+    @keyframes toastProgress {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+    .toast-progress {
+        width: 100%;
     }
 `;
 document.head.appendChild(style);
