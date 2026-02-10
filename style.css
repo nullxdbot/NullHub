@@ -480,36 +480,46 @@ body::after {
 
 .tiktok-caption {
     margin-bottom: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--primary);
 }
 
 .tiktok-caption p {
     font-size: 14px;
     color: var(--text-primary);
-    line-height: 1.6;
+    line-height: 1.7;
     word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 .tiktok-stats {
     display: flex;
-    gap: 20px;
+    gap: 16px;
     padding: 16px;
     background: var(--bg-secondary);
     border-radius: var(--radius-sm);
     margin-bottom: 16px;
     flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .stat-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
 }
 
 .stat-item svg {
     color: var(--primary-light);
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
 }
 
 .stat-item span {
@@ -519,8 +529,8 @@ body::after {
 .tiktok-published {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
+    gap: 10px;
+    padding: 14px 16px;
     background: var(--bg-secondary);
     border-radius: var(--radius-sm);
     margin-bottom: 16px;
@@ -529,18 +539,23 @@ body::after {
 .tiktok-published svg {
     color: var(--text-muted);
     flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
 }
 
 .tiktok-published span {
     font-size: 13px;
     color: var(--text-secondary);
+    line-height: 1.4;
+    flex: 1;
 }
 
 .tiktok-music {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
+    gap: 10px;
+    padding: 14px 16px;
     background: rgba(139, 92, 246, 0.1);
     border: 1px solid rgba(139, 92, 246, 0.2);
     border-radius: var(--radius-sm);
@@ -550,6 +565,9 @@ body::after {
 .tiktok-music svg {
     color: var(--primary-light);
     flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
 }
 
 .tiktok-music span {
@@ -558,6 +576,7 @@ body::after {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1;
 }
 
 .video-preview {
@@ -841,6 +860,30 @@ body::after {
     .logo {
         width: 40px;
         height: 40px;
+    }
+    
+    .tiktok-stats {
+        gap: 12px;
+        padding: 12px;
+    }
+    
+    .stat-item {
+        font-size: 12px;
+        min-width: calc(50% - 6px);
+    }
+    
+    .tiktok-published,
+    .tiktok-music {
+        padding: 12px;
+        gap: 8px;
+    }
+    
+    .input-section {
+        padding: 16px;
+    }
+    
+    .container {
+        padding: 16px;
     }
 }
 
