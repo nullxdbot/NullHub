@@ -137,7 +137,7 @@ body::after {
 .container {
     max-width: 600px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 24px 20px;
     position: relative;
     z-index: 1;
 }
@@ -145,11 +145,18 @@ body::after {
 /* Platform Selector */
 .platform-selector {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     overflow-x: auto;
-    padding: 4px;
+    padding: 16px;
     margin-bottom: 24px;
     scrollbar-width: none;
+    background: rgba(22, 22, 38, 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: fadeInUp 0.6s ease-out 0.1s both;
 }
 
 .platform-selector::-webkit-scrollbar {
@@ -157,23 +164,24 @@ body::after {
 }
 
 .platform-btn {
-    background: rgba(22, 22, 38, 0.6);
+    background: rgba(22, 22, 38, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-sm);
-    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
     gap: 8px;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
     position: relative;
     overflow: hidden;
+    min-width: fit-content;
 }
 
 .platform-btn::before {
@@ -184,7 +192,7 @@ body::after {
     width: 0;
     height: 0;
     border-radius: 50%;
-    background: rgba(139, 92, 246, 0.3);
+    background: rgba(139, 92, 246, 0.4);
     transform: translate(-50%, -50%);
     transition: width 0.6s, height 0.6s;
 }
@@ -195,20 +203,20 @@ body::after {
 }
 
 .platform-btn:hover {
-    background: rgba(139, 92, 246, 0.2);
+    background: rgba(139, 92, 246, 0.25);
     border-color: var(--primary);
     color: var(--text-primary);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(139, 92, 246, 0.2);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
 }
 
 .platform-btn.active {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(124, 58, 237, 0.9));
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.95), rgba(124, 58, 237, 0.95));
     backdrop-filter: blur(10px);
-    border-color: var(--primary);
+    border-color: rgba(139, 92, 246, 0.8);
     color: white;
     transform: scale(1.05);
-    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.5), 0 0 0 2px rgba(139, 92, 246, 0.3);
 }
 
 .platform-btn.active::before {
@@ -218,19 +226,22 @@ body::after {
 .platform-btn svg,
 .platform-btn img {
     flex-shrink: 0;
-    border-radius: 4px;
+    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
 }
 
 /* Input Section */
 .input-section {
-    background: rgba(22, 22, 38, 0.6);
+    background: rgba(22, 22, 38, 0.7);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 24px;
     margin-bottom: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1);
     animation: fadeInUp 0.6s ease-out 0.2s both;
 }
 
@@ -274,7 +285,7 @@ body::after {
 }
 
 .input-wrapper input::placeholder {
-    color: var(--text-muted);
+    color: rgba(148, 163, 184, 0.6);
 }
 
 .paste-btn {
@@ -370,14 +381,14 @@ body::after {
 
 /* Loading */
 .loading {
-    background: rgba(22, 22, 38, 0.6);
+    background: rgba(22, 22, 38, 0.7);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: var(--radius);
-    padding: 40px 20px;
+    padding: 48px 24px;
     text-align: center;
     margin-bottom: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1);
     animation: fadeInUp 0.3s ease-out;
 }
 
@@ -425,14 +436,14 @@ body::after {
 
 /* Result Section */
 .result-section {
-    background: rgba(22, 22, 38, 0.6);
+    background: rgba(22, 22, 38, 0.7);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 24px;
     margin-bottom: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1);
     animation: fadeInUp 0.5s ease-out;
 }
 
@@ -910,22 +921,26 @@ body::after {
 
 /* Supported Platforms */
 .supported-platforms {
-    background: rgba(22, 22, 38, 0.6);
+    background: rgba(22, 22, 38, 0.7);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: var(--radius);
-    padding: 24px;
+    padding: 28px 24px;
     margin-bottom: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1);
     animation: fadeInUp 0.6s ease-out 0.3s both;
 }
 
 .supported-platforms h3 {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     text-align: center;
+    background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .platform-grid {
@@ -981,41 +996,54 @@ body::after {
 }
 
 .platform-item .platform-icon {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 8px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 10px;
     object-fit: contain;
     flex-shrink: 0;
-    border-radius: 8px;
+    border-radius: 10px;
+    filter: drop-shadow(0 2px 8px rgba(139, 92, 246, 0.2));
+    transition: all 0.3s ease;
+}
+
+.platform-item:hover .platform-icon {
+    transform: scale(1.1);
+    filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.4));
 }
 
 .platform-item span {
     display: block;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-secondary);
     font-weight: 500;
     line-height: 1.3;
     text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
 /* How to Use */
 .how-to-use {
-    background: rgba(22, 22, 38, 0.6);
+    background: rgba(22, 22, 38, 0.7);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: var(--radius);
-    padding: 24px;
+    padding: 28px 24px;
     margin-bottom: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1);
     animation: fadeInUp 0.6s ease-out 0.4s both;
 }
 
 .how-to-use h3 {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     text-align: center;
+    background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .steps {
