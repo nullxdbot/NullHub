@@ -1,7 +1,9 @@
 const API_KEY = 'SelfFrrl';
 const API_BASE_URL = 'https://api.neoxr.eu/api';
 
+// ============================================================
 // DOM Elements
+// ============================================================
 const platformBtns = document.querySelectorAll('.platform-btn');
 const urlInput = document.getElementById('url-input');
 const pasteBtn = document.getElementById('paste-btn');
@@ -17,8 +19,61 @@ const downloadOptions = document.getElementById('download-options');
 
 let currentPlatform = 'tiktok';
 let currentData = null;
+let currentSlideIndex = 0;
 
-// Platform Selection
+// Platform yang API-nya mengembalikan array item {type, url} seperti Instagram
+const ARRAY_PLATFORMS = ['instagram', 'xiaohongshu', 'threads'];
+
+// ============================================================
+// Auto-deteksi platform dari URL
+// ============================================================
+const PLATFORM_HOSTS = [
+    { platform: 'douyin', hosts: ['douyin.com', 'iesdouyin.com'] },
+    { platform: 'tiktok', hosts: ['tiktok.com'] },
+    { platform: 'instagram', hosts: ['instagram.com', 'instagr.am'] },
+    { platform: 'youtube', hosts: ['youtube.com', 'youtu.be'] },
+    { platform: 'facebook', hosts: ['facebook.com', 'fb.watch', 'fb.com'] },
+    { platform: 'pinterest', hosts: ['pinterest.com', 'pin.it'] },
+    { platform: 'capcut', hosts: ['capcut.com'] },
+    { platform: 'xiaohongshu', hosts: ['xiaohongshu.com', 'xhslink.com'] },
+    { platform: 'threads', hosts: ['threads.net', 'threads.com'] },
+    { platform: 'pixiv', hosts: ['pixiv.net'] }
+];
+
+function detectPlatformFromUrl(url) {
+    try {
+        const hostname = new URL(url).hostname.toLowerCase();
+        for (const entry of PLATFORM_HOSTS) {
+            for (const host of entry.hosts) {
+                if (hostname === host || hostname.endsWith('.' + host)) {
+                    return entry.platform;
+                }
+            }
+        }
+    } catch (_) {
+        /* URL belum valid, abaikan */
+    }
+    return null;
+}
+
+function setActivePlatform(platform) {
+    if (!platform || platform === currentPlatform) return;
+    currentPlatform = platform;
+    platformBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.platform === platform);
+    });
+}
+
+function autoDetectPlatform() {
+    const detected = detectPlatformFromUrl(urlInput.value.trim());
+    if (detected) {
+        setActivePlatform(detected);
+    }
+}
+
+// ============================================================
+// Event Listeners
+// ============================================================
 platformBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         platformBtns.forEach(b => b.classList.remove('active'));
@@ -27,112 +82,106 @@ platformBtns.forEach(btn => {
     });
 });
 
-// Paste Button
 pasteBtn.addEventListener('click', async () => {
     try {
         const text = await navigator.clipboard.readText();
         urlInput.value = text;
         urlInput.focus();
+        autoDetectPlatform();
     } catch (err) {
         console.error('Gagal paste:', err);
-        // Fallback: focus input untuk manual paste
         urlInput.focus();
     }
 });
 
-// Download Button
+urlInput.addEventListener('input', autoDetectPlatform);
+
 downloadBtn.addEventListener('click', handleDownload);
 
-// Enter key support
 urlInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         handleDownload();
     }
 });
 
+// ============================================================
+// Fetch Helper (dengan pengecekan response.ok)
+// ============================================================
+async function fetchJson(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`API merespons dengan status ${response.status}`);
+    }
+    return response.json();
+}
+
+// ============================================================
+// Main Handler
+// ============================================================
 async function handleDownload() {
     const url = urlInput.value.trim();
-    
+
     if (!url) {
-        alert('Masukkan URL video terlebih dahulu!');
+        showNotification('Masukkan URL video terlebih dahulu!', 'error');
         return;
     }
-    
+
     if (!isValidUrl(url)) {
-        alert('URL tidak valid! Pastikan URL lengkap dengan https://');
+        showNotification('URL tidak valid! Pastikan URL lengkap dengan https://', 'error');
         return;
     }
-    
-    // Show loading
+
+    autoDetectPlatform();
+
+    // Cegah double-click / request ganda
+    downloadBtn.disabled = true;
     loadingEl.style.display = 'block';
     resultSection.style.display = 'none';
-    
+
     try {
         const endpoint = getApiEndpoint(currentPlatform);
-        
+
         if (currentPlatform === 'youtube') {
-            // For YouTube, fetch both video and audio
             const videoUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&type=video&quality=720p&apikey=${API_KEY}`;
             const audioUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&type=audio&quality=128kbps&apikey=${API_KEY}`;
-            
-            // Fetch both in parallel
-            const [videoResponse, audioResponse] = await Promise.all([
-                fetch(videoUrl),
-                fetch(audioUrl)
+
+            const [videoData, audioData] = await Promise.all([
+                fetchJson(videoUrl),
+                fetchJson(audioUrl)
             ]);
-            
-            const videoData = await videoResponse.json();
-            const audioData = await audioResponse.json();
-            
-            loadingEl.style.display = 'none';
-            
+
             if (videoData.status && audioData.status) {
-                // Combine both data
                 currentData = {
                     ...videoData,
-                    audioData: audioData.data // Store audio data separately
+                    audioData: audioData.data
                 };
                 displayResult(currentData);
             } else {
-                alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
+                showNotification('Gagal mengambil data. Pastikan URL benar dan platform didukung.', 'error');
             }
         } else if (currentPlatform === 'pinterest') {
-            // For Pinterest, fetch both pin (V1 for video) and pin-v2 (for details)
             const pinV1Url = `${API_BASE_URL}/pin?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
             const pinV2Url = `${API_BASE_URL}/pin-v2?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
-            
-            // Fetch both in parallel
-            const [v1Response, v2Response] = await Promise.all([
-                fetch(pinV1Url),
-                fetch(pinV2Url)
+
+            const [v1Data, v2Data] = await Promise.all([
+                fetchJson(pinV1Url),
+                fetchJson(pinV2Url)
             ]);
-            
-            const v1Data = await v1Response.json();
-            const v2Data = await v2Response.json();
-            
-            loadingEl.style.display = 'none';
-            
+
             if (v2Data.status) {
-                // Use V2 as base, add V1 video data if available
                 currentData = {
                     ...v2Data.data,
-                    v1Data: v1Data.status ? v1Data.data : null // Store V1 data separately for video
+                    v1Data: v1Data.status ? v1Data.data : null
                 };
                 displayResult(currentData);
             } else {
-                alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
+                showNotification('Gagal mengambil data. Pastikan URL benar dan platform didukung.', 'error');
             }
         } else {
-            // For other platforms
-            let apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
-            
-            const response = await fetch(apiUrl);
-            const data = await response.json();
-            
-            loadingEl.style.display = 'none';
-            
+            const apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+            const data = await fetchJson(apiUrl);
+
             if (data.status && data.data) {
-                // For CapCut, caption is at root level, so we need to merge it
                 if (currentPlatform === 'capcut' && data.caption) {
                     currentData = {
                         ...data.data,
@@ -143,13 +192,15 @@ async function handleDownload() {
                 }
                 displayResult(currentData);
             } else {
-                alert('Gagal mengambil data. Pastikan URL benar dan platform didukung.');
+                showNotification('Gagal mengambil data. Pastikan URL benar dan platform didukung.', 'error');
             }
         }
     } catch (error) {
-        loadingEl.style.display = 'none';
         console.error('Error:', error);
-        alert('Terjadi kesalahan. Periksa koneksi internet Anda.');
+        showNotification('Terjadi kesalahan. Periksa koneksi internet Anda atau coba lagi nanti.', 'error');
+    } finally {
+        loadingEl.style.display = 'none';
+        downloadBtn.disabled = false;
     }
 }
 
@@ -159,7 +210,7 @@ function getApiEndpoint(platform) {
         'instagram': 'ig',
         'youtube': 'youtube',
         'facebook': 'fb',
-        'pinterest': 'pin', // Not used, we fetch both pin and pin-v2
+        'pinterest': 'pin',
         'capcut': 'capcut',
         'xiaohongshu': 'xiaohongshu',
         'douyin': 'douyin',
@@ -171,72 +222,66 @@ function getApiEndpoint(platform) {
 
 function isValidUrl(string) {
     try {
-        new URL(string);
-        return true;
+        const parsed = new URL(string);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
     } catch (_) {
         return false;
     }
 }
 
+// ============================================================
+// Display Result
+// ============================================================
 function displayResult(data) {
     resultSection.style.display = 'block';
-    
+
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
-    
-    // Handle TikTok, Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, Threads, AND Pixiv with same card style
-    if (currentPlatform === 'tiktok' || currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads' || currentPlatform === 'pixiv') {
-        // Show TikTok card, hide regular preview
+
+    const cardPlatforms = ['tiktok', 'instagram', 'youtube', 'facebook', 'pinterest', 'capcut', 'xiaohongshu', 'douyin', 'threads', 'pixiv'];
+
+    if (cardPlatforms.includes(currentPlatform)) {
         tiktokCard.style.display = 'block';
         regularPreview.style.display = 'none';
-        
-        // User Info
+
+        // ---------- User Info ----------
         const avatar = document.getElementById('tiktok-avatar');
         const username = document.getElementById('tiktok-username');
         const nickname = document.getElementById('tiktok-nickname');
-        
+
         if (currentPlatform === 'instagram') {
-            // For Instagram, use Instagram icon
             avatar.src = 'img/Instagram_icon.webp';
             username.textContent = 'Instagram Downloader';
-            nickname.textContent = ''; // Kosongkan nickname
+            nickname.textContent = '';
         } else if (currentPlatform === 'youtube') {
-            // For YouTube, use YouTube icon
             avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/240px-YouTube_full-color_icon_%282017%29.svg.png';
             username.textContent = data.channel || 'YouTube';
-            nickname.textContent = ''; // Kosongkan nickname
+            nickname.textContent = '';
         } else if (currentPlatform === 'facebook') {
-            // For Facebook, use Facebook icon
-            avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/2023_Facebook_icon.svg/240px-2023_Facebook_icon.svg.png';
+            avatar.src = 'img/Facebook_icon.webp';
             username.textContent = 'Facebook Video';
-            nickname.textContent = ''; // Kosongkan nickname
+            nickname.textContent = '';
         } else if (currentPlatform === 'pinterest') {
-            // For Pinterest, use author data
-            avatar.src = data.author?.image_medium_url || data.author?.image_small_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Pinterest-logo.png/240px-Pinterest-logo.png';
+            avatar.src = data.author?.image_medium_url || data.author?.image_small_url || 'img/Pinterest_icon.webp';
             username.textContent = data.author?.full_name || data.author?.username || 'Pinterest';
             nickname.textContent = data.author?.username ? `@${data.author.username}` : '';
         } else if (currentPlatform === 'capcut') {
-            // For CapCut, use CapCut icon
             avatar.src = 'img/CapCut_icon.webp';
             username.textContent = 'CapCut';
             nickname.textContent = '';
         } else if (currentPlatform === 'xiaohongshu') {
-            // For Xiaohongshu, use Xiaohongshu icon
             avatar.src = 'img/rednote_icon.webp';
             username.textContent = 'Xiaohongshu';
             nickname.textContent = 'RedNote';
         } else if (currentPlatform === 'douyin') {
-            // For Douyin, use TikTok icon (same app, China version)
             avatar.src = 'img/TikTok_icon.webp';
             username.textContent = 'Douyin';
             nickname.textContent = '抖音';
         } else if (currentPlatform === 'threads') {
-            // For Threads, use Threads icon
             avatar.src = 'img/Threads_icon.webp';
             username.textContent = 'Threads';
             nickname.textContent = '';
         } else if (currentPlatform === 'pixiv') {
-            // For Pixiv, use Pixiv icon and author data
             avatar.src = 'img/pixiv_icon.webp';
             username.textContent = data.author?.name || 'Pixiv';
             nickname.textContent = data.author?.username ? `@${data.author.username}` : '';
@@ -245,44 +290,19 @@ function displayResult(data) {
             username.textContent = data.author?.nickname || 'Unknown User';
             nickname.textContent = '@' + (data.author?.uniqueId || data.author?.unique_id || 'unknown');
         }
-        
-        // Video Player Container
+
+        // ---------- Media (foto/video) ----------
         const videoContainer = document.querySelector('.tiktok-video-container');
-        
-        // Determine if photo or video
+
         let photoArray = null;
         let hasVideo = false;
-        
-        if (currentPlatform === 'instagram') {
-            // Instagram returns array of objects
+
+        if (ARRAY_PLATFORMS.includes(currentPlatform)) {
+            // Instagram, Xiaohongshu, Threads: array item {type, url}
             const items = Array.isArray(data) ? data : [data];
             const photoItems = items.filter(item => item.type !== 'mp4');
             const videoItems = items.filter(item => item.type === 'mp4');
-            
-            if (photoItems.length > 0) {
-                photoArray = photoItems.map(item => item.url);
-            }
-            if (videoItems.length > 0) {
-                hasVideo = true;
-            }
-        } else if (currentPlatform === 'xiaohongshu') {
-            // Xiaohongshu returns array like Instagram
-            const items = Array.isArray(data) ? data : [data];
-            const photoItems = items.filter(item => item.type !== 'mp4');
-            const videoItems = items.filter(item => item.type === 'mp4');
-            
-            if (photoItems.length > 0) {
-                photoArray = photoItems.map(item => item.url);
-            }
-            if (videoItems.length > 0) {
-                hasVideo = true;
-            }
-        } else if (currentPlatform === 'threads') {
-            // Threads returns array like Instagram
-            const items = Array.isArray(data) ? data : [data];
-            const photoItems = items.filter(item => item.type !== 'mp4');
-            const videoItems = items.filter(item => item.type === 'mp4');
-            
+
             if (photoItems.length > 0) {
                 photoArray = photoItems.map(item => item.url);
             }
@@ -290,141 +310,32 @@ function displayResult(data) {
                 hasVideo = true;
             }
         } else if (currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'capcut') {
-            // YouTube, Facebook, and CapCut always have video
             hasVideo = true;
         } else if (currentPlatform === 'pinterest') {
-            // Pinterest - check V1 data for video, V2 for image/GIF
             if (data.v1Data && data.v1Data.type === 'mp4') {
-                // V1 has MP4 video
                 hasVideo = true;
             } else if (data.is_video) {
-                // V2 says it's video (rare)
                 hasVideo = true;
             } else if (data.content && Array.isArray(data.content) && data.content.length > 0) {
-                // V2 has image/GIF content
                 photoArray = data.content.map(item => item.url);
             }
         } else if (currentPlatform === 'pixiv') {
-            // Pixiv has images array (always images, no video)
             if (data.images && Array.isArray(data.images) && data.images.length > 0) {
                 photoArray = data.images;
             }
         } else {
-            // TikTok
+            // TikTok / Douyin
             photoArray = data.photo || data.images;
             hasVideo = data.video || data.videoWM;
         }
-        
-        // Check if this is a photo/slide post
+
         if (photoArray && photoArray.length > 0 && !hasVideo) {
-            // Photo slider
-            videoContainer.innerHTML = `
-                <div class="tiktok-image-slider">
-                    <div class="slider-container">
-                        ${photoArray.map((img, index) => `
-                            <div class="slide ${index === 0 ? 'active' : ''}" data-index="${index}">
-                                <img src="${img}" alt="Slide ${index + 1}" loading="lazy">
-                            </div>
-                        `).join('')}
-                    </div>
-                    ${photoArray.length > 1 ? `
-                        <button class="slider-btn prev" onclick="changeSlide(-1)">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="15 18 9 12 15 6"></polyline>
-                            </svg>
-                        </button>
-                        <button class="slider-btn next" onclick="changeSlide(1)">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                            </svg>
-                        </button>
-                        <div class="slider-dots">
-                            ${photoArray.map((_, index) => `
-                                <span class="dot ${index === 0 ? 'active' : ''}" onclick="goToSlide(${index})"></span>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-            currentSlideIndex = 0;
+            renderPhotoSlider(videoContainer, photoArray);
         } else {
-            // Video player - always show video for YouTube since we fetch both video and audio
-            videoContainer.innerHTML = `
-                <video id="tiktok-video-player" controls playsinline></video>
-                <div class="video-overlay" id="video-overlay">
-                    <button class="play-btn" id="play-btn">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                    </button>
-                </div>
-            `;
-            
-            const vp = document.getElementById('tiktok-video-player');
-            const vo = document.getElementById('video-overlay');
-            const pb = document.getElementById('play-btn');
-            
-            // Set video source
-            if (currentPlatform === 'instagram') {
-                const items = Array.isArray(data) ? data : [data];
-                const videoItem = items.find(item => item.type === 'mp4');
-                if (videoItem) vp.src = videoItem.url;
-            } else if (currentPlatform === 'xiaohongshu') {
-                const items = Array.isArray(data) ? data : [data];
-                const videoItem = items.find(item => item.type === 'mp4');
-                if (videoItem) vp.src = videoItem.url;
-            } else if (currentPlatform === 'threads') {
-                const items = Array.isArray(data) ? data : [data];
-                const videoItem = items.find(item => item.type === 'mp4');
-                if (videoItem) vp.src = videoItem.url;
-            } else if (currentPlatform === 'youtube') {
-                // YouTube video from data.data.url
-                if (data.data && data.data.url) {
-                    vp.src = data.data.url;
-                    vp.poster = data.thumbnail || '';
-                }
-            } else if (currentPlatform === 'facebook') {
-                // Facebook video - use HD quality if available
-                const items = Array.isArray(data) ? data : [data];
-                const hdVideo = items.find(item => item.quality === 'HD');
-                const video = hdVideo || items[0];
-                if (video && video.url) {
-                    vp.src = video.url;
-                }
-            } else if (currentPlatform === 'pinterest') {
-                // Pinterest - use V1 data for MP4 video
-                if (data.v1Data && data.v1Data.url) {
-                    vp.src = data.v1Data.url;
-                } else if (data.content && Array.isArray(data.content) && data.content.length > 0) {
-                    // Fallback to V2 content (rare case)
-                    vp.src = data.content[0].url;
-                }
-            } else if (currentPlatform === 'capcut') {
-                // CapCut video
-                if (data.url) {
-                    vp.src = data.url;
-                }
-            } else {
-                if (data.video && data.video !== false) {
-                    vp.src = data.video;
-                } else if (data.videoWM && data.videoWM !== false) {
-                    vp.src = data.videoWM;
-                }
-            }
-            
-            pb.addEventListener('click', () => {
-                vp.play();
-                vo.classList.add('hidden');
-            });
-            vo.addEventListener('click', () => {
-                vp.play();
-                vo.classList.add('hidden');
-            });
-            vp.addEventListener('play', () => vo.classList.add('hidden'));
-            vp.addEventListener('pause', () => vo.classList.remove('hidden'));
+            renderVideoPlayer(videoContainer, data);
         }
-        
-        // Caption
+
+        // ---------- Caption ----------
         const captionText = document.getElementById('tiktok-caption-text');
         if (currentPlatform === 'instagram') {
             captionText.textContent = 'No caption';
@@ -445,65 +356,58 @@ function displayResult(data) {
         } else if (currentPlatform === 'pinterest') {
             const title = data.title && data.title !== '-' ? data.title : '';
             const desc = data.description && data.description !== '-' ? data.description : '';
-            
-            // Determine content type
+
             let contentType = '';
             if (data.v1Data && data.v1Data.type === 'mp4') {
                 contentType = 'Video';
             } else if (data.is_video) {
                 contentType = 'Video';
-            } else if (data.content && data.content[0]?.url.includes('.gif')) {
+            } else if (data.content && data.content[0]?.url?.includes('.gif')) {
                 contentType = 'GIF';
             } else if (data.content && data.content.length > 0) {
                 contentType = 'Image';
             }
-            
-            // Use title/desc if available, otherwise show content type
-            const captionContent = title || desc || (contentType ? `Pinterest ${contentType}` : 'Pinterest');
-            captionText.textContent = captionContent;
+
+            captionText.textContent = title || desc || (contentType ? `Pinterest ${contentType}` : 'Pinterest');
         } else {
             captionText.textContent = data.caption || data.title || 'No caption';
         }
-        
-        // Statistics
+
+        // ---------- Statistics ----------
         const statsSection = document.querySelector('.tiktok-stats');
         const likes = document.getElementById('tiktok-likes');
         const comments = document.getElementById('tiktok-comments');
         const views = document.getElementById('tiktok-views');
         const shares = document.getElementById('tiktok-shares');
         const saved = document.getElementById('tiktok-saved');
-        
-        if (currentPlatform === 'instagram' || currentPlatform === 'youtube' || currentPlatform === 'facebook' || currentPlatform === 'pinterest' || currentPlatform === 'capcut' || currentPlatform === 'xiaohongshu' || currentPlatform === 'douyin' || currentPlatform === 'threads' || currentPlatform === 'pixiv') {
-            // Hide entire stats section for Instagram, YouTube, Facebook, Pinterest, CapCut, Xiaohongshu, Douyin, Threads, and Pixiv
-            statsSection.style.display = 'none';
-        } else {
-            // Show stats for TikTok
+
+        if (currentPlatform === 'tiktok') {
             statsSection.style.display = 'flex';
-            likes.textContent = data.statistic?.likes ? formatNumber(data.statistic.likes) : '0';
-            comments.textContent = data.statistic?.comments ? formatNumber(data.statistic.comments) : '0';
-            views.textContent = data.statistic?.views ? formatNumber(data.statistic.views) : '0';
-            shares.textContent = data.statistic?.shares ? formatNumber(data.statistic.shares) : '0';
+            likes.textContent = data.statistic?.likes ? formatNumber(parseInt(data.statistic.likes)) : '0';
+            comments.textContent = data.statistic?.comments ? formatNumber(parseInt(data.statistic.comments)) : '0';
+            views.textContent = data.statistic?.views ? formatNumber(parseInt(data.statistic.views)) : '0';
+            shares.textContent = data.statistic?.shares ? formatNumber(parseInt(data.statistic.shares)) : '0';
             saved.textContent = data.statistic?.saved ? formatNumber(parseInt(data.statistic.saved)) : '0';
+        } else {
+            statsSection.style.display = 'none';
         }
-        
-        // Published Date
+
+        // ---------- Published Date ----------
         const publishedSection = document.getElementById('tiktok-published');
         const publishedDate = document.getElementById('tiktok-date');
-        
-        // Only show published date for TikTok (which has actual timestamp)
+
         if (currentPlatform === 'tiktok' && data.published) {
             publishedSection.style.display = 'flex';
             const date = new Date(parseInt(data.published) * 1000);
             publishedDate.textContent = formatDate(date);
         } else {
-            // Hide published date section for all other platforms
             publishedSection.style.display = 'none';
         }
-        
-        // Music Info
+
+        // ---------- Music Info ----------
         const musicSection = document.getElementById('tiktok-music');
         const musicTitle = document.getElementById('tiktok-music-title');
-        
+
         if (currentPlatform === 'tiktok' && data.music && data.music.title) {
             musicSection.style.display = 'flex';
             let musicText = data.music.title;
@@ -517,462 +421,365 @@ function displayResult(data) {
         } else {
             musicSection.style.display = 'none';
         }
-        
+
     } else {
-        // Show regular preview, hide TikTok card
+        // ---------- Regular Preview (fallback) ----------
         tiktokCard.style.display = 'none';
         regularPreview.style.display = 'flex';
-        
-        // For Instagram and other platforms
-        // Instagram returns data as array of objects with type and url
-        if (currentPlatform === 'instagram') {
-            // For Instagram, data is an array
-            const firstItem = Array.isArray(data) ? data[0] : data;
-            
-            if (firstItem && firstItem.url) {
-                // Check if it's video or image
-                if (firstItem.type === 'mp4') {
-                    previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3Ctext x=%2260%22 y=%2250%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2216%22%3EVideo%3C/text%3E%3C/svg%3E';
-                } else {
-                    previewThumb.src = firstItem.url;
-                }
-            } else {
-                previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
-            }
-            
-            const itemCount = Array.isArray(data) ? data.length : 1;
-            previewTitle.textContent = itemCount > 1 ? `Instagram Post (${itemCount} items)` : 'Instagram Post';
-            previewAuthor.textContent = 'Instagram';
-            previewDuration.textContent = '';
-            previewViews.textContent = '';
-        } else if (currentPlatform === 'youtube') {
-            // For YouTube
-            previewThumb.src = data.thumbnail || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23FF0000%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
-            previewTitle.textContent = data.title || 'YouTube Video';
-            previewAuthor.textContent = data.channel || 'Unknown';
-            previewDuration.textContent = data.fduration || data.duration || '';
-            previewViews.textContent = data.views || '';
+
+        if (data.thumbnail) {
+            previewThumb.src = data.thumbnail;
         } else {
-            // For other platforms
-            if (data.thumbnail) {
-                previewThumb.src = data.thumbnail;
-            } else {
-                previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
-            }
-            previewTitle.textContent = data.title || 'Video';
-            previewAuthor.textContent = data.author || 'Unknown';
-            previewDuration.textContent = data.duration || '';
-            previewViews.textContent = data.views ? formatViews(data.views) : '';
+            previewThumb.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2290%22%3E%3Crect fill=%22%23333%22 width=%22120%22 height=%2290%22/%3E%3C/svg%3E';
         }
+        previewTitle.textContent = data.title || 'Video';
+        previewAuthor.textContent = data.author || 'Unknown';
+        previewDuration.textContent = data.duration || '';
+        previewViews.textContent = data.views ? formatViews(data.views) : '';
     }
-    
-    // Display download options
+
     displayDownloadOptions(data);
 }
 
+// ============================================================
+// Photo Slider Renderer
+// ============================================================
+function renderPhotoSlider(videoContainer, photoArray) {
+    videoContainer.innerHTML = `
+        <div class="tiktok-image-slider">
+            <div class="slider-container">
+                ${photoArray.map((img, index) => `
+                    <div class="slide ${index === 0 ? 'active' : ''}" data-index="${index}">
+                        <img alt="Slide ${index + 1}" loading="lazy">
+                    </div>
+                `).join('')}
+            </div>
+            ${photoArray.length > 1 ? `
+                <button class="slider-btn prev" type="button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <button class="slider-btn next" type="button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+                <div class="slider-dots">
+                    ${photoArray.map((_, index) => `
+                        <span class="dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
+                    `).join('')}
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    // Set src via property agar URL dengan karakter khusus tidak merusak HTML
+    videoContainer.querySelectorAll('.slide img').forEach((imgEl, index) => {
+        imgEl.src = photoArray[index];
+    });
+
+    currentSlideIndex = 0;
+
+    const prevBtn = videoContainer.querySelector('.slider-btn.prev');
+    const nextBtn = videoContainer.querySelector('.slider-btn.next');
+    if (prevBtn) prevBtn.addEventListener('click', () => changeSlide(-1));
+    if (nextBtn) nextBtn.addEventListener('click', () => changeSlide(1));
+
+    videoContainer.querySelectorAll('.dot').forEach(dot => {
+        dot.addEventListener('click', () => goToSlide(parseInt(dot.dataset.index)));
+    });
+}
+
+// ============================================================
+// Video Player Renderer
+// ============================================================
+function renderVideoPlayer(videoContainer, data) {
+    videoContainer.innerHTML = `
+        <video id="tiktok-video-player" controls playsinline></video>
+        <div class="video-overlay" id="video-overlay">
+            <button class="play-btn" id="play-btn" type="button">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="white">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
+        </div>
+    `;
+
+    const vp = document.getElementById('tiktok-video-player');
+    const vo = document.getElementById('video-overlay');
+    const pb = document.getElementById('play-btn');
+
+    if (ARRAY_PLATFORMS.includes(currentPlatform)) {
+        const items = Array.isArray(data) ? data : [data];
+        const videoItem = items.find(item => item.type === 'mp4');
+        if (videoItem) vp.src = videoItem.url;
+    } else if (currentPlatform === 'youtube') {
+        if (data.data && data.data.url) {
+            vp.src = data.data.url;
+            vp.poster = data.thumbnail || '';
+        }
+    } else if (currentPlatform === 'facebook') {
+        const items = Array.isArray(data) ? data : [data];
+        const hdVideo = items.find(item => item.quality === 'HD');
+        const video = hdVideo || items[0];
+        if (video && video.url) {
+            vp.src = video.url;
+        }
+    } else if (currentPlatform === 'pinterest') {
+        if (data.v1Data && data.v1Data.url) {
+            vp.src = data.v1Data.url;
+        } else if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+            vp.src = data.content[0].url;
+        }
+    } else if (currentPlatform === 'capcut') {
+        if (data.url) {
+            vp.src = data.url;
+        }
+    } else {
+        if (data.video && data.video !== false) {
+            vp.src = data.video;
+        } else if (data.videoWM && data.videoWM !== false) {
+            vp.src = data.videoWM;
+        }
+    }
+
+    pb.addEventListener('click', () => {
+        vp.play();
+        vo.classList.add('hidden');
+    });
+    vo.addEventListener('click', () => {
+        vp.play();
+        vo.classList.add('hidden');
+    });
+    vp.addEventListener('play', () => vo.classList.add('hidden'));
+    vp.addEventListener('pause', () => vo.classList.remove('hidden'));
+}
+
+// ============================================================
+// Download Options
+// ============================================================
 function displayDownloadOptions(data) {
     downloadOptions.innerHTML = '';
-    
-    // YouTube specific options
+
+    // ---------- YouTube ----------
     if (currentPlatform === 'youtube') {
-        // Add video option
         if (data.data && data.data.url) {
-            const videoOption = createDownloadOptionSimple({
+            downloadOptions.appendChild(createDownloadOptionSimple({
                 url: data.data.url,
                 type: `Video ${data.data.quality || '720p'}`,
                 desc: `${data.data.size || ''} • ${data.data.extension || 'mp4'}`,
                 icon: 'video'
-            });
-            downloadOptions.appendChild(videoOption);
+            }));
         }
-        
-        // Add audio option
+
         if (data.audioData && data.audioData.url) {
-            const audioOption = createDownloadOptionSimple({
+            downloadOptions.appendChild(createDownloadOptionSimple({
                 url: data.audioData.url,
                 type: `Audio ${data.audioData.quality || '128kbps'}`,
                 desc: `${data.audioData.size || ''} • ${data.audioData.extension || 'mp3'}`,
                 icon: 'audio'
-            });
-            downloadOptions.appendChild(audioOption);
+            }));
         }
         return;
     }
-    
-    // Facebook specific options
+
+    // ---------- Facebook ----------
     if (currentPlatform === 'facebook') {
-        // Facebook data is an array with SD and HD quality
         const items = Array.isArray(data) ? data : [data];
-        
+
         items.forEach((item) => {
             if (item && item.url && item.response === 200) {
-                const option = createDownloadOptionSimple({
+                downloadOptions.appendChild(createDownloadOptionSimple({
                     url: item.url,
                     type: `Video ${item.quality}`,
                     desc: `Facebook ${item.quality}`,
                     icon: 'video'
-                });
-                downloadOptions.appendChild(option);
+                }));
             }
         });
         return;
     }
-    
-    // Pinterest specific options
+
+    // ---------- Pinterest ----------
     if (currentPlatform === 'pinterest') {
-        // Add V1 video option if available (MP4)
         if (data.v1Data && data.v1Data.url && data.v1Data.type === 'mp4') {
-            const videoOption = createDownloadOptionSimple({
+            downloadOptions.appendChild(createDownloadOptionSimple({
                 url: data.v1Data.url,
                 type: 'Video MP4',
                 desc: `${data.v1Data.size || ''} • mp4`,
                 icon: 'video'
-            });
-            downloadOptions.appendChild(videoOption);
+            }));
         }
-        
-        // Add V2 content options (image/GIF)
+
         if (data.content && Array.isArray(data.content)) {
             data.content.forEach((item, index) => {
                 if (item.url) {
                     const isGif = item.url.includes('.gif');
-                    
-                    let type = 'Image';
-                    let icon = 'image';
-                    if (isGif) {
-                        type = 'GIF';
-                    }
-                    
-                    const option = createDownloadOptionSimple({
+                    const type = isGif ? 'GIF' : 'Image';
+
+                    downloadOptions.appendChild(createDownloadOptionSimple({
                         url: item.url,
                         type: data.content.length > 1 ? `${type} ${index + 1}` : type,
                         desc: item.width && item.height ? `${item.width}x${item.height}` : 'Pinterest',
-                        icon: icon
-                    });
-                    downloadOptions.appendChild(option);
+                        icon: 'image'
+                    }));
                 }
             });
         }
         return;
     }
-    
-    // CapCut specific options
+
+    // ---------- CapCut ----------
     if (currentPlatform === 'capcut') {
         if (data.url) {
-            const option = createDownloadOptionSimple({
+            downloadOptions.appendChild(createDownloadOptionSimple({
                 url: data.url,
                 type: 'Video',
                 desc: 'CapCut Video',
                 icon: 'video'
-            });
-            downloadOptions.appendChild(option);
+            }));
         }
         return;
     }
-    
-    // Xiaohongshu specific options
-    if (currentPlatform === 'xiaohongshu') {
-        // Xiaohongshu data is an array like Instagram
+
+    // ---------- Instagram / Xiaohongshu / Threads (array platforms) ----------
+    if (ARRAY_PLATFORMS.includes(currentPlatform)) {
         const items = Array.isArray(data) ? data : [data];
-        
+        const labels = {
+            instagram: { name: 'Instagram', photo: 'Foto', videoDesc: 'Video HD', photoDesc: 'Gambar HD' },
+            xiaohongshu: { name: 'Xiaohongshu', photo: 'Image', videoDesc: 'Video', photoDesc: 'Image' },
+            threads: { name: 'Threads', photo: 'Image', videoDesc: 'Video', photoDesc: 'Image' }
+        };
+        const label = labels[currentPlatform];
+
         items.forEach((item, index) => {
             if (item && item.url) {
-                const option = createDownloadOptionSimple({
+                downloadOptions.appendChild(createDownloadOptionSimple({
                     url: item.url,
-                    type: item.type === 'mp4' ? `Video ${index + 1}` : `Image ${index + 1}`,
-                    desc: item.type === 'mp4' ? 'Video' : 'Image',
+                    type: item.type === 'mp4' ? `Video ${index + 1}` : `${label.photo} ${index + 1}`,
+                    desc: item.type === 'mp4' ? label.videoDesc : label.photoDesc,
                     icon: item.type === 'mp4' ? 'video' : 'image'
-                });
-                downloadOptions.appendChild(option);
+                }));
             }
         });
-        
-        // Add option to download all if multiple items
+
         if (items.length > 1) {
-            const allOption = document.createElement('div');
-            allOption.className = 'download-option';
-            allOption.innerHTML = `
-                <div class="option-info">
-                    <div class="option-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                    </div>
-                    <div class="option-text">
-                        <h4>Download All</h4>
-                        <p>${items.length} items</p>
-                    </div>
-                </div>
-                <button class="option-download-btn" onclick="downloadAllXiaohongshu()">
-                    Unduh Semua
-                </button>
-            `;
-            downloadOptions.appendChild(allOption);
+            downloadOptions.appendChild(createDownloadAllOption(
+                currentPlatform === 'instagram' ? 'Download Semua' : 'Download All',
+                `${items.length} item`,
+                () => downloadAllArrayItems(label.name)
+            ));
         }
         return;
     }
-    
-    // Threads specific options
-    if (currentPlatform === 'threads') {
-        // Threads data is an array like Instagram
-        const items = Array.isArray(data) ? data : [data];
-        
-        items.forEach((item, index) => {
-            if (item && item.url) {
-                const option = createDownloadOptionSimple({
-                    url: item.url,
-                    type: item.type === 'mp4' ? `Video ${index + 1}` : `Image ${index + 1}`,
-                    desc: item.type === 'mp4' ? 'Video' : 'Image',
-                    icon: item.type === 'mp4' ? 'video' : 'image'
-                });
-                downloadOptions.appendChild(option);
-            }
-        });
-        
-        // Add option to download all if multiple items
-        if (items.length > 1) {
-            const allOption = document.createElement('div');
-            allOption.className = 'download-option';
-            allOption.innerHTML = `
-                <div class="option-info">
-                    <div class="option-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                    </div>
-                    <div class="option-text">
-                        <h4>Download All</h4>
-                        <p>${items.length} items</p>
-                    </div>
-                </div>
-                <button class="option-download-btn" onclick="downloadAllThreads()">
-                    Unduh Semua
-                </button>
-            `;
-            downloadOptions.appendChild(allOption);
-        }
-        return;
-    }
-    
-    // Pixiv specific options
+
+    // ---------- Pixiv ----------
     if (currentPlatform === 'pixiv') {
         if (data.images && Array.isArray(data.images)) {
             data.images.forEach((imageUrl, index) => {
-                const option = createDownloadOptionSimple({
+                downloadOptions.appendChild(createDownloadOptionSimple({
                     url: imageUrl,
                     type: data.images.length > 1 ? `Image ${index + 1}` : 'Image',
                     desc: 'Pixiv Artwork',
                     icon: 'image'
-                });
-                downloadOptions.appendChild(option);
+                }));
             });
-            
-            // Add option to download all if multiple images
+
             if (data.images.length > 1) {
-                const allOption = document.createElement('div');
-                allOption.className = 'download-option';
-                allOption.innerHTML = `
-                    <div class="option-info">
-                        <div class="option-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <polyline points="21 15 16 10 5 21"/>
-                            </svg>
-                        </div>
-                        <div class="option-text">
-                            <h4>Download All</h4>
-                            <p>${data.images.length} images</p>
-                        </div>
-                    </div>
-                    <button class="option-download-btn" onclick="downloadAllPixiv()">
-                        Unduh Semua
-                    </button>
-                `;
-                downloadOptions.appendChild(allOption);
+                downloadOptions.appendChild(createDownloadAllOption(
+                    'Download All',
+                    `${data.images.length} images`,
+                    downloadAllPixiv
+                ));
             }
         }
         return;
     }
-    
-    // Instagram specific options
-    if (currentPlatform === 'instagram') {
-        // Instagram data is an array of objects with type and url
-        const items = Array.isArray(data) ? data : [data];
-        
-        items.forEach((item, index) => {
-            if (item && item.url) {
-                const option = createDownloadOptionSimple({
-                    url: item.url,
-                    type: item.type === 'mp4' ? `Video ${index + 1}` : `Foto ${index + 1}`,
-                    desc: item.type === 'mp4' ? 'Video HD' : 'Gambar HD',
-                    icon: item.type === 'mp4' ? 'video' : 'image'
-                });
-                downloadOptions.appendChild(option);
-            }
-        });
-        
-        // Add option to download all if multiple items
-        if (items.length > 1) {
-            const allOption = document.createElement('div');
-            allOption.className = 'download-option';
-            allOption.innerHTML = `
-                <div class="option-info">
-                    <div class="option-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                    </div>
-                    <div class="option-text">
-                        <h4>Download Semua</h4>
-                        <p>${items.length} item (foto & video)</p>
-                    </div>
-                </div>
-                <button class="option-download-btn" onclick="downloadAllInstagram()">
-                    Unduh Semua
-                </button>
-            `;
-            downloadOptions.appendChild(allOption);
-        }
-        
-        return;
-    }
-    
-    // TikTok specific options
-    if (currentPlatform === 'tiktok') {
-        // Check if this is a photo/slide post (use 'photo' or 'images' array)
+
+    // ---------- TikTok / Douyin ----------
+    if (currentPlatform === 'tiktok' || currentPlatform === 'douyin') {
         const photoArray = data.photo || data.images;
         if (photoArray && Array.isArray(photoArray) && photoArray.length > 0) {
-            // Photo/Slide post - provide download options for each image
             photoArray.forEach((imageUrl, index) => {
-                const option = createDownloadOptionSimple({
+                downloadOptions.appendChild(createDownloadOptionSimple({
                     url: imageUrl,
                     type: `Foto ${index + 1}`,
                     desc: `Gambar HD (${photoArray.length} foto)`,
                     icon: 'image'
-                });
-                downloadOptions.appendChild(option);
+                }));
             });
-            
-            // Add option to download all images
+
             if (photoArray.length > 1) {
-                const allOption = document.createElement('div');
-                allOption.className = 'download-option';
-                allOption.innerHTML = `
-                    <div class="option-info">
-                        <div class="option-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <polyline points="21 15 16 10 5 21"/>
-                            </svg>
-                        </div>
-                        <div class="option-text">
-                            <h4>Semua Foto</h4>
-                            <p>Download ${photoArray.length} gambar sekaligus</p>
-                        </div>
-                    </div>
-                    <button class="option-download-btn" onclick="downloadAllImages()">
-                        Unduh Semua
-                    </button>
-                `;
-                downloadOptions.appendChild(allOption);
+                downloadOptions.appendChild(createDownloadAllOption(
+                    'Semua Foto',
+                    `Download ${photoArray.length} gambar sekaligus`,
+                    downloadAllImages
+                ));
             }
-            
-            // Add audio download option if available
+
             if (data.audio) {
-                const audioOption = createDownloadOptionSimple({
+                downloadOptions.appendChild(createDownloadOptionSimple({
                     url: data.audio,
                     type: 'Audio',
                     desc: 'Original sound',
                     icon: 'audio'
-                });
-                downloadOptions.appendChild(audioOption);
+                }));
             }
         } else {
-            // Video post
-            // Video No Watermark
             if (data.video && data.video !== false) {
-                const option = createDownloadOptionSimple({
+                downloadOptions.appendChild(createDownloadOptionSimple({
                     url: data.video,
                     type: 'Video HD',
                     desc: 'No Watermark',
                     icon: 'video'
-                });
-                downloadOptions.appendChild(option);
+                }));
             }
-            
-            // Video With Watermark
+
             if (data.videoWM && data.videoWM !== false) {
-                const option = createDownloadOptionSimple({
+                downloadOptions.appendChild(createDownloadOptionSimple({
                     url: data.videoWM,
-                    type: 'Video HD',
+                    type: 'Video HD WM',
                     desc: 'With Watermark',
                     icon: 'video'
-                });
-                downloadOptions.appendChild(option);
+                }));
+            }
+
+            if (data.audio) {
+                downloadOptions.appendChild(createDownloadOptionSimple({
+                    url: data.audio,
+                    type: 'Audio',
+                    desc: 'Original sound',
+                    icon: 'audio'
+                }));
             }
         }
-    } else {
-        // For other platforms (array or single object)
-        const items = Array.isArray(data) ? data : [data];
-        items.forEach((item, index) => {
-            const option = createDownloadOption(item, index);
-            downloadOptions.appendChild(option);
-        });
+        return;
     }
+
+    // ---------- Fallback (platform lain) ----------
+    const items = Array.isArray(data) ? data : [data];
+    items.forEach((item) => {
+        downloadOptions.appendChild(createDownloadOption(item));
+    });
 }
 
-function createDownloadOption(item, index) {
-    const div = document.createElement('div');
-    div.className = 'download-option';
-    
-    const type = item.type || 'mp4';
-    const quality = item.quality || getQualityFromType(type);
-    const size = item.size || 'Unknown';
-    
-    div.innerHTML = `
-        <div class="option-info">
-            <div class="option-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    ${type.includes('mp4') || type.includes('video') ? 
-                        '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>' :
-                        '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'
-                    }
-                </svg>
-            </div>
-            <div class="option-text">
-                <h4>${quality}</h4>
-                <p>${type.toUpperCase()} ${size !== 'Unknown' ? '• ' + size : ''}</p>
-            </div>
-        </div>
-        <button class="option-download-btn" onclick="downloadFile('${item.url}', '${quality}')">
-            Unduh
-        </button>
-    `;
-    
-    return div;
-}
+// ============================================================
+// Download Option Builders (tanpa inline onclick — aman dari
+// URL yang mengandung tanda kutip)
+// ============================================================
+const ICON_PATHS = {
+    video: '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
+    audio: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'
+};
 
 function createDownloadOptionSimple(options) {
     const div = document.createElement('div');
     div.className = 'download-option';
-    
-    let iconSvg;
-    if (options.icon === 'audio') {
-        iconSvg = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
-    } else if (options.icon === 'image') {
-        iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>';
-    } else {
-        iconSvg = '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
-    }
-    
+
+    const iconSvg = ICON_PATHS[options.icon] || ICON_PATHS.video;
+
     div.innerHTML = `
         <div class="option-info">
             <div class="option-icon">
@@ -981,124 +788,191 @@ function createDownloadOptionSimple(options) {
                 </svg>
             </div>
             <div class="option-text">
-                <h4>${options.type}</h4>
-                <p>${options.desc}</p>
+                <h4></h4>
+                <p></p>
             </div>
         </div>
-        <button class="option-download-btn" onclick="downloadFile('${options.url}', '${options.type.replace(/ /g, '_')}')">
+        <button class="option-download-btn" type="button">
             Unduh
         </button>
     `;
-    
+
+    // Isi teks via textContent agar aman dari karakter khusus
+    div.querySelector('h4').textContent = options.type;
+    div.querySelector('p').textContent = options.desc;
+
+    div.querySelector('.option-download-btn').addEventListener('click', () => {
+        downloadFile(options.url, options.type.replace(/ /g, '_'));
+    });
+
     return div;
 }
 
+function createDownloadOption(item) {
+    const type = item.type || 'mp4';
+    const quality = item.quality || getQualityFromType(type);
+    const size = item.size || 'Unknown';
+    const isVideo = type.includes('mp4') || type.includes('video');
+
+    return createDownloadOptionSimple({
+        url: item.url,
+        type: quality,
+        desc: `${type.toUpperCase()}${size !== 'Unknown' ? ' • ' + size : ''}`,
+        icon: isVideo ? 'video' : 'audio'
+    });
+}
+
+function createDownloadAllOption(title, subtitle, handler) {
+    const div = document.createElement('div');
+    div.className = 'download-option';
+    div.innerHTML = `
+        <div class="option-info">
+            <div class="option-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    ${ICON_PATHS.image}
+                </svg>
+            </div>
+            <div class="option-text">
+                <h4></h4>
+                <p></p>
+            </div>
+        </div>
+        <button class="option-download-btn" type="button">
+            Unduh Semua
+        </button>
+    `;
+
+    div.querySelector('h4').textContent = title;
+    div.querySelector('p').textContent = subtitle;
+    div.querySelector('.option-download-btn').addEventListener('click', handler);
+
+    return div;
+}
+
+// ============================================================
+// Download All Handlers
+// ============================================================
 function downloadAllImages() {
     if (!currentData) {
-        alert('Tidak ada gambar untuk diunduh');
+        showNotification('Tidak ada gambar untuk diunduh', 'error');
         return;
     }
-    
+
     const photoArray = currentData.photo || currentData.images;
     if (!photoArray || !Array.isArray(photoArray) || photoArray.length === 0) {
-        alert('Tidak ada gambar untuk diunduh');
+        showNotification('Tidak ada gambar untuk diunduh', 'error');
         return;
     }
-    
-    // Download each image with a small delay
+
     photoArray.forEach((imageUrl, index) => {
         setTimeout(() => {
-            downloadFile(imageUrl, `TikTok_Photo_${index + 1}`);
-        }, index * 500); // 500ms delay between downloads
+            downloadFile(imageUrl, `TikTok_Foto_${index + 1}`, true);
+        }, index * 800);
     });
-    
-    showNotification(`Mengunduh ${photoArray.length} foto...`);
+
+    showNotification(`Mengunduh ${photoArray.length} foto...`, 'info');
 }
 
-function downloadAllInstagram() {
+function downloadAllArrayItems(platformName) {
     if (!currentData) {
-        alert('Tidak ada item untuk diunduh');
+        showNotification('Tidak ada item untuk diunduh', 'error');
         return;
     }
-    
+
     const items = Array.isArray(currentData) ? currentData : [currentData];
-    
-    // Download each item with a small delay
+
     items.forEach((item, index) => {
         if (item && item.url) {
             setTimeout(() => {
-                const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
-                const type = item.type === 'mp4' ? 'Video' : 'Photo';
-                downloadFile(item.url, `Instagram_${type}_${index + 1}.${ext}`);
-            }, index * 500); // 500ms delay between downloads
+                const type = item.type === 'mp4' ? 'Video' : 'Foto';
+                downloadFile(item.url, `${platformName}_${type}_${index + 1}`, true);
+            }, index * 800);
         }
     });
-    
-    showNotification(`Mengunduh ${items.length} item...`);
-}
 
-function downloadAllXiaohongshu() {
-    if (!currentData) {
-        alert('Tidak ada item untuk diunduh');
-        return;
-    }
-    
-    const items = Array.isArray(currentData) ? currentData : [currentData];
-    
-    // Download each item with a small delay
-    items.forEach((item, index) => {
-        if (item && item.url) {
-            setTimeout(() => {
-                const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
-                const type = item.type === 'mp4' ? 'Video' : 'Image';
-                downloadFile(item.url, `Xiaohongshu_${type}_${index + 1}.${ext}`);
-            }, index * 500); // 500ms delay between downloads
-        }
-    });
-    
-    showNotification(`Mengunduh ${items.length} item...`);
-}
-
-function downloadAllThreads() {
-    if (!currentData) {
-        alert('Tidak ada item untuk diunduh');
-        return;
-    }
-    
-    const items = Array.isArray(currentData) ? currentData : [currentData];
-    
-    // Download each item with a small delay
-    items.forEach((item, index) => {
-        if (item && item.url) {
-            setTimeout(() => {
-                const ext = item.type === 'mp4' ? 'mp4' : 'jpg';
-                const type = item.type === 'mp4' ? 'Video' : 'Image';
-                downloadFile(item.url, `Threads_${type}_${index + 1}.${ext}`);
-            }, index * 500); // 500ms delay between downloads
-        }
-    });
-    
-    showNotification(`Mengunduh ${items.length} item...`);
+    showNotification(`Mengunduh ${items.length} item...`, 'info');
 }
 
 function downloadAllPixiv() {
     if (!currentData || !currentData.images) {
-        alert('Tidak ada gambar untuk diunduh');
+        showNotification('Tidak ada gambar untuk diunduh', 'error');
         return;
     }
-    
+
     const images = currentData.images;
-    
-    // Download each image with a small delay
+
     images.forEach((imageUrl, index) => {
         setTimeout(() => {
-            downloadFile(imageUrl, `Pixiv_Image_${index + 1}.jpg`);
-        }, index * 500); // 500ms delay between downloads
+            downloadFile(imageUrl, `Pixiv_Image_${index + 1}`, true);
+        }, index * 800);
     });
-    
-    showNotification(`Mengunduh ${images.length} gambar...`);
+
+    showNotification(`Mengunduh ${images.length} gambar...`, 'info');
 }
 
+// ============================================================
+// Download File
+// - Coba fetch → blob agar atribut download dihormati browser
+//   (atribut download diabaikan untuk URL cross-origin).
+// - Jika CORS memblokir, fallback buka di tab baru.
+// ============================================================
+function getExtensionFromUrl(url, name) {
+    try {
+        const pathname = new URL(url).pathname.toLowerCase();
+        const match = pathname.match(/\.(mp4|mov|webm|mp3|m4a|wav|jpg|jpeg|png|webp|gif|heic)$/);
+        if (match) return match[1];
+    } catch (_) { /* abaikan */ }
+
+    const lower = (name || '').toLowerCase();
+    if (lower.includes('audio') || lower.includes('mp3')) return 'mp3';
+    if (lower.includes('foto') || lower.includes('image') || lower.includes('gambar') || lower.includes('photo')) return 'jpg';
+    return 'mp4';
+}
+
+async function downloadFile(url, name, silent = false) {
+    const extension = getExtensionFromUrl(url, name);
+    const safeName = String(name).replace(/[^\w\-]+/g, '_');
+    const filename = `NullHub_${safeName}_${Date.now()}.${extension}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+
+        if (!silent) {
+            showNotification('Download dimulai! Periksa folder download Anda.', 'success');
+        }
+    } catch (_) {
+        // Fallback: CORS diblokir server media, buka di tab baru
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        if (!silent) {
+            showNotification('File dibuka di tab baru. Tekan lama / klik kanan untuk menyimpan.', 'info');
+        }
+    }
+}
+
+// ============================================================
+// Formatters
+// ============================================================
 function getQualityFromType(type) {
     if (type.includes('1080')) return 'Full HD 1080p';
     if (type.includes('720')) return 'HD 720p';
@@ -1106,28 +980,6 @@ function getQualityFromType(type) {
     if (type.includes('360')) return 'SD 360p';
     if (type.includes('mp3') || type.includes('audio')) return 'Audio MP3';
     return 'Video';
-}
-
-function downloadFile(url, quality) {
-    // Determine file extension based on URL or quality name
-    let extension = 'mp4';
-    if (url.includes('.mp3') || quality.toLowerCase().includes('audio') || quality.toLowerCase().includes('mp3')) {
-        extension = 'mp3';
-    } else if (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png')) {
-        extension = url.split('.').pop().split('?')[0];
-    }
-    
-    // Create temporary link to trigger download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `NullHub_${quality}_${Date.now()}.${extension}`;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    // Show notification
-    showNotification('Download dimulai! Periksa folder download Anda.', 'success');
 }
 
 function formatViews(views) {
@@ -1140,6 +992,7 @@ function formatViews(views) {
 }
 
 function formatNumber(num) {
+    if (isNaN(num)) return '0';
     if (num >= 1000000000) {
         return (num / 1000000000).toFixed(1) + 'B';
     } else if (num >= 1000000) {
@@ -1156,7 +1009,7 @@ function formatDate(date) {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
     const diffMinutes = Math.floor(diffTime / (1000 * 60));
-    
+
     if (diffMinutes < 60) {
         return diffMinutes + ' menit yang lalu';
     } else if (diffHours < 24) {
@@ -1171,65 +1024,12 @@ function formatDate(date) {
     }
 }
 
-function showNotification(message) {
-    // Simple notification (bisa diganti dengan toast library)
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        color: white;
-        padding: 12px 24px;
-        border-radius: 12px;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
-        z-index: 1000;
-        animation: slideUp 0.3s ease;
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideDown 0.3s ease';
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, 300);
-    }, 3000);
-}
-
-// Add CSS animation for notification
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideUp {
-        from {
-            transform: translateX(-50%) translateY(100px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-    }
-    @keyframes slideDown {
-        from {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(-50%) translateY(100px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-// Enhanced Toast Notification System
+// ============================================================
+// Toast Notification (satu versi, animasi ter-inject dengan benar)
+// ============================================================
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
-    
+
     const icons = {
         success: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -1246,21 +1046,23 @@ function showNotification(message, type = 'success') {
             <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>`
     };
-    
+
     const colors = {
         success: 'linear-gradient(135deg, #10b981, #059669)',
         error: 'linear-gradient(135deg, #ef4444, #dc2626)',
         info: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
     };
-    
+
     notification.innerHTML = `
         <div style="display: flex; align-items: center; gap: 12px;">
             ${icons[type] || icons.info}
-            <span>${message}</span>
+            <span></span>
         </div>
         <div class="toast-progress"></div>
     `;
-    
+
+    notification.querySelector('span').textContent = message;
+
     notification.style.cssText = `
         position: fixed;
         bottom: 24px;
@@ -1279,7 +1081,7 @@ function showNotification(message, type = 'success') {
         min-width: 300px;
         max-width: 500px;
     `;
-    
+
     const progressBar = notification.querySelector('.toast-progress');
     if (progressBar) {
         progressBar.style.cssText = `
@@ -1292,20 +1094,20 @@ function showNotification(message, type = 'success') {
             animation: toastProgress 3s linear;
         `;
     }
-    
+
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.style.animation = 'slideDownBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
         setTimeout(() => {
-            document.body.removeChild(notification);
+            notification.remove();
         }, 500);
     }, 3000);
 }
 
-// Add enhanced animation styles
-const enhancedStyle = document.createElement('style');
-enhancedStyle.textContent = `
+// Inject keyframes untuk toast (dulu bug: variabel yang di-append salah)
+const toastStyle = document.createElement('style');
+toastStyle.textContent = `
     @keyframes slideUpBounce {
         0% {
             transform: translateX(-50%) translateY(100px);
@@ -1337,52 +1139,45 @@ enhancedStyle.textContent = `
         width: 100%;
     }
 `;
-document.head.appendChild(style);
+document.head.appendChild(toastStyle);
 
-// Slider functions for TikTok photo posts
-let currentSlideIndex = 0;
-
+// ============================================================
+// Slider Functions
+// ============================================================
 function changeSlide(direction) {
     const slides = document.querySelectorAll('.slide');
     const dots = document.querySelectorAll('.dot');
-    
+
     if (slides.length === 0) return;
-    
-    // Remove active class from current slide
-    slides[currentSlideIndex].classList.remove('active');
-    dots[currentSlideIndex].classList.remove('active');
-    
-    // Update index
+
+    slides[currentSlideIndex]?.classList.remove('active');
+    dots[currentSlideIndex]?.classList.remove('active');
+
     currentSlideIndex += direction;
-    
-    // Loop around
+
     if (currentSlideIndex >= slides.length) {
         currentSlideIndex = 0;
     } else if (currentSlideIndex < 0) {
         currentSlideIndex = slides.length - 1;
     }
-    
-    // Add active class to new slide
-    slides[currentSlideIndex].classList.add('active');
-    dots[currentSlideIndex].classList.add('active');
+
+    slides[currentSlideIndex]?.classList.add('active');
+    dots[currentSlideIndex]?.classList.add('active');
 }
 
 function goToSlide(index) {
     const slides = document.querySelectorAll('.slide');
     const dots = document.querySelectorAll('.dot');
-    
+
     if (slides.length === 0) return;
-    
-    // Remove active class from current slide
-    slides[currentSlideIndex].classList.remove('active');
-    dots[currentSlideIndex].classList.remove('active');
-    
-    // Update to specified index
+
+    slides[currentSlideIndex]?.classList.remove('active');
+    dots[currentSlideIndex]?.classList.remove('active');
+
     currentSlideIndex = index;
-    
-    // Add active class to new slide
-    slides[currentSlideIndex].classList.add('active');
-    dots[currentSlideIndex].classList.add('active');
+
+    slides[currentSlideIndex]?.classList.add('active');
+    dots[currentSlideIndex]?.classList.add('active');
 }
 
 console.log('🚀 NullHub Loaded!');
