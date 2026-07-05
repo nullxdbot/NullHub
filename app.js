@@ -1181,3 +1181,130 @@ function goToSlide(index) {
 }
 
 console.log('🚀 NullHub Loaded!');
+
+// ============================================================
+// AI Chat (Neoxr gpt-pro) — Floating Button + Panel
+// ============================================================
+const aiFab = document.getElementById('ai-fab');
+const aiOverlay = document.getElementById('ai-overlay');
+const aiPanel = document.getElementById('ai-panel');
+const aiCloseBtn = document.getElementById('ai-close-btn');
+const aiClearBtn = document.getElementById('ai-clear-btn');
+const aiMessages = document.getElementById('ai-messages');
+const aiInput = document.getElementById('ai-input');
+const aiSendBtn = document.getElementById('ai-send-btn');
+
+let aiBusy = false;
+
+const AI_GREETING = 'Halo! Saya NullHub AI 🤖\nTanyakan apa saja — teknologi, tips, atau hal lain yang ingin kamu tahu.';
+
+function openAiPanel() {
+    aiPanel.classList.add('open');
+    aiOverlay.classList.add('open');
+    aiFab.classList.add('hidden-fab');
+    if (aiMessages.children.length === 0) {
+        appendAiMessage(AI_GREETING, 'bot');
+    }
+    setTimeout(() => aiInput.focus(), 350);
+}
+
+function closeAiPanel() {
+    aiPanel.classList.remove('open');
+    aiOverlay.classList.remove('open');
+    aiFab.classList.remove('hidden-fab');
+}
+
+aiFab.addEventListener('click', openAiPanel);
+aiCloseBtn.addEventListener('click', closeAiPanel);
+aiOverlay.addEventListener('click', closeAiPanel);
+
+aiClearBtn.addEventListener('click', () => {
+    aiMessages.innerHTML = '';
+    appendAiMessage(AI_GREETING, 'bot');
+});
+
+aiSendBtn.addEventListener('click', sendAiMessage);
+aiInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendAiMessage();
+    }
+});
+
+// Escape HTML dulu, baru terapkan markdown ringan (bold, code, list)
+// agar respons API tidak bisa menyuntikkan tag HTML.
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function formatAiMessage(text) {
+    let safe = escapeHtml(text);
+    safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    safe = safe.replace(/^\* /gm, '• ');
+    safe = safe.replace(/^(\d+)\. /gm, '$1. ');
+    return safe;
+}
+
+function appendAiMessage(text, role) {
+    const div = document.createElement('div');
+    div.className = `ai-msg ${role}`;
+    if (role === 'bot') {
+        div.innerHTML = formatAiMessage(text);
+    } else {
+        div.textContent = text;
+    }
+    aiMessages.appendChild(div);
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+    return div;
+}
+
+function showAiTyping() {
+    const div = document.createElement('div');
+    div.className = 'ai-typing';
+    div.id = 'ai-typing-indicator';
+    div.innerHTML = '<span></span><span></span><span></span>';
+    aiMessages.appendChild(div);
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+}
+
+function hideAiTyping() {
+    document.getElementById('ai-typing-indicator')?.remove();
+}
+
+async function sendAiMessage() {
+    const question = aiInput.value.trim();
+    if (!question || aiBusy) return;
+
+    aiBusy = true;
+    aiSendBtn.disabled = true;
+    aiInput.value = '';
+
+    appendAiMessage(question, 'user');
+    showAiTyping();
+
+    try {
+        const apiUrl = `${API_BASE_URL}/gpt-pro?q=${encodeURIComponent(question)}&apikey=${API_KEY}`;
+        const result = await fetchJson(apiUrl);
+
+        hideAiTyping();
+
+        if (result.status && result.data && result.data.message) {
+            appendAiMessage(result.data.message, 'bot');
+        } else {
+            appendAiMessage('Maaf, saya tidak mendapatkan jawaban dari server. Coba tanyakan dengan kalimat lain.', 'error');
+        }
+    } catch (error) {
+        console.error('AI Chat error:', error);
+        hideAiTyping();
+        appendAiMessage('Terjadi kesalahan koneksi. Periksa internet Anda lalu coba lagi.', 'error');
+    } finally {
+        aiBusy = false;
+        aiSendBtn.disabled = false;
+        aiInput.focus();
+    }
+}
