@@ -1364,17 +1364,29 @@ body {
 /* ============================================================
    Halaman AI Chat
    ============================================================ */
+/* Kartu chat dikunci fixed: atas menempel header, bawah menempel nav.
+   Saat keyboard muncul, hanya area pesan yang menyusut — layout stabil. */
+body.ai-page-active {
+    overflow: hidden;
+}
+
 .ai-chat-page {
+    position: fixed;
+    top: calc(var(--header-h, 92px) + 10px);
+    left: 12px;
+    right: 12px;
+    bottom: calc(68px + env(safe-area-inset-bottom) + 10px);
+    max-width: 600px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
-    height: calc(100dvh - 200px); /* header + padding container + bottom nav */
-    min-height: 380px;
     background: var(--bg-card);
     border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: var(--radius);
     overflow: hidden;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    z-index: 500;
 }
 
 .ai-chat-header {

@@ -1202,12 +1202,25 @@ function switchPage(pageName) {
         el.classList.toggle('active', name === pageName);
     });
 
+    // Kunci scroll body saat di halaman chat agar layout tidak lompat
+    document.body.classList.toggle('ai-page-active', pageName === 'ai');
+
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     if (pageName === 'ai' && aiMessages.children.length === 0) {
         appendAiMessage(AI_GREETING, 'bot');
     }
 }
+
+// Ukur tinggi header asli untuk posisi kartu chat (nilai --header-h di CSS)
+function updateHeaderHeight() {
+    const header = document.querySelector('.app-header');
+    if (header) {
+        document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+    }
+}
+updateHeaderHeight();
+window.addEventListener('resize', updateHeaderHeight);
 
 navItems.forEach(item => {
     item.addEventListener('click', () => switchPage(item.dataset.page));
@@ -1235,6 +1248,13 @@ aiInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         sendAiMessage();
     }
+});
+
+// Saat keyboard muncul, pastikan pesan terakhir tetap terlihat
+aiInput.addEventListener('focus', () => {
+    setTimeout(() => {
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+    }, 300);
 });
 
 // Escape HTML dulu, baru terapkan markdown ringan (bold, code, list)
