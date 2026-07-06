@@ -1239,7 +1239,8 @@ let aiBusy = false;
 // Model AI yang tersedia (endpoint Neoxr, format respons sama)
 const AI_MODELS = {
     gpt: { endpoint: 'gpt-pro', label: 'GPT' },
-    gemini: { endpoint: 'gemini-chat', label: 'Gemini' }
+    gemini: { endpoint: 'gemini-chat', label: 'Gemini' },
+    bing: { endpoint: 'bing-chat', label: 'Bing' }
 };
 let aiModel = 'gpt';
 

@@ -1648,3 +1648,17 @@ body.ai-page-active {
     background: rgba(139, 92, 246, 0.3);
     margin: 6px 0;
 }
+
+/* Header chat responsif: 3 pill model di layar sempit */
+@media (max-width: 430px) {
+    .ai-chat-info p {
+        display: none;
+    }
+    .ai-model-btn {
+        padding: 5px 8px;
+        font-size: 10px;
+    }
+    .ai-chat-header {
+        gap: 8px;
+    }
+}
