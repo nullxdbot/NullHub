@@ -1236,7 +1236,7 @@ const aiSendBtn = document.getElementById('ai-send-btn');
 
 let aiBusy = false;
 
-const AI_GREETING = 'Halo! Saya NullHub AI 🤖\nTanyakan apa saja — teknologi, tips, atau hal lain yang ingin kamu tahu.';
+const AI_GREETING = 'Halo! Saya NullXD AI 🤖\nTanyakan apa saja — teknologi, tips, atau hal lain yang ingin kamu tahu.';
 
 aiClearBtn.addEventListener('click', () => {
     aiMessages.innerHTML = '';
