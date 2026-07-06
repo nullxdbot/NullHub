@@ -1183,12 +1183,39 @@ function goToSlide(index) {
 console.log('🚀 NullHub Loaded!');
 
 // ============================================================
-// AI Chat (Neoxr gpt-pro) — Floating Button + Panel
+// Bottom Navigation — Sistem Halaman
 // ============================================================
-const aiFab = document.getElementById('ai-fab');
-const aiOverlay = document.getElementById('ai-overlay');
-const aiPanel = document.getElementById('ai-panel');
-const aiCloseBtn = document.getElementById('ai-close-btn');
+const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+const pageEls = {
+    downloader: document.getElementById('page-downloader'),
+    ai: document.getElementById('page-ai')
+};
+
+function switchPage(pageName) {
+    if (!pageEls[pageName]) return;
+
+    navItems.forEach(item => {
+        item.classList.toggle('active', item.dataset.page === pageName);
+    });
+
+    Object.entries(pageEls).forEach(([name, el]) => {
+        el.classList.toggle('active', name === pageName);
+    });
+
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
+    if (pageName === 'ai' && aiMessages.children.length === 0) {
+        appendAiMessage(AI_GREETING, 'bot');
+    }
+}
+
+navItems.forEach(item => {
+    item.addEventListener('click', () => switchPage(item.dataset.page));
+});
+
+// ============================================================
+// AI Chat (Neoxr gpt-pro) — Halaman AI
+// ============================================================
 const aiClearBtn = document.getElementById('ai-clear-btn');
 const aiMessages = document.getElementById('ai-messages');
 const aiInput = document.getElementById('ai-input');
@@ -1197,26 +1224,6 @@ const aiSendBtn = document.getElementById('ai-send-btn');
 let aiBusy = false;
 
 const AI_GREETING = 'Halo! Saya NullHub AI 🤖\nTanyakan apa saja — teknologi, tips, atau hal lain yang ingin kamu tahu.';
-
-function openAiPanel() {
-    aiPanel.classList.add('open');
-    aiOverlay.classList.add('open');
-    aiFab.classList.add('hidden-fab');
-    if (aiMessages.children.length === 0) {
-        appendAiMessage(AI_GREETING, 'bot');
-    }
-    setTimeout(() => aiInput.focus(), 350);
-}
-
-function closeAiPanel() {
-    aiPanel.classList.remove('open');
-    aiOverlay.classList.remove('open');
-    aiFab.classList.remove('hidden-fab');
-}
-
-aiFab.addEventListener('click', openAiPanel);
-aiCloseBtn.addEventListener('click', closeAiPanel);
-aiOverlay.addEventListener('click', closeAiPanel);
 
 aiClearBtn.addEventListener('click', () => {
     aiMessages.innerHTML = '';
@@ -1246,17 +1253,16 @@ function formatAiMessage(text) {
     safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     safe = safe.replace(/`([^`\n]+)`/g, '<code>$1</code>');
     safe = safe.replace(/^\* /gm, '• ');
-    safe = safe.replace(/^(\d+)\. /gm, '$1. ');
     return safe;
 }
 
 function appendAiMessage(text, role) {
     const div = document.createElement('div');
     div.className = `ai-msg ${role}`;
-    if (role === 'bot') {
-        div.innerHTML = formatAiMessage(text);
-    } else {
+    if (role === 'user') {
         div.textContent = text;
+    } else {
+        div.innerHTML = formatAiMessage(text);
     }
     aiMessages.appendChild(div);
     aiMessages.scrollTop = aiMessages.scrollHeight;
