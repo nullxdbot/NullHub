@@ -1208,7 +1208,7 @@ function switchPage(pageName) {
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     if (pageName === 'ai' && aiMessages.children.length === 0) {
-        appendAiMessage(AI_GREETING, 'bot');
+        showAiGreeting();
     }
 }
 
@@ -1259,7 +1259,7 @@ const AI_GREETING = 'Halo! Saya NullXD AI 🤖\nTanyakan apa saja — teknologi,
 
 aiClearBtn.addEventListener('click', () => {
     aiMessages.innerHTML = '';
-    appendAiMessage(AI_GREETING, 'bot');
+    showAiGreeting();
 });
 
 aiSendBtn.addEventListener('click', sendAiMessage);
@@ -1276,8 +1276,10 @@ aiInput.addEventListener('focus', () => {
     }, 300);
 });
 
-// Escape HTML dulu, baru terapkan markdown ringan (bold, code, list)
-// agar respons API tidak bisa menyuntikkan tag HTML.
+// ---------- Renderer Rich Message ----------
+// Escape HTML dulu, baru terapkan format — respons API tidak bisa
+// menyuntikkan tag HTML. Mendukung: ```code block```, tabel markdown,
+// heading, pembatas, bold, inline code, dan bullet.
 function escapeHtml(text) {
     return text
         .replace(/&/g, '&amp;')
@@ -1288,14 +1290,119 @@ function escapeHtml(text) {
 }
 
 function formatAiMessage(text) {
+    const parts = String(text).split(/```(\w*)\n?([\s\S]*?)```/g);
+    let html = '';
+    for (let i = 0; i < parts.length; i += 3) {
+        html += formatAiText(parts[i] || '');
+        if (i + 2 < parts.length) {
+            html += buildCodeBlock(parts[i + 1], parts[i + 2]);
+        }
+    }
+    return html;
+}
+
+function buildCodeBlock(language, code) {
+    const lang = (language || 'code').toLowerCase();
+    return `<div class="ai-code"><div class="ai-code-head"><span>${escapeHtml(lang)}</span><button class="ai-copy-btn" type="button">Copy</button></div><pre><code>${escapeHtml(code.replace(/\n$/, ''))}</code></pre></div>`;
+}
+
+function formatAiText(text) {
     let safe = escapeHtml(text);
+    safe = renderTables(safe);
     safe = safe.replace(/^#{1,3} (.+)$/gm, '<strong class="ai-h">$1</strong>');
     safe = safe.replace(/^---+$/gm, '<span class="ai-hr"></span>');
     safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     safe = safe.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-    safe = safe.replace(/^\* /gm, '• ');
+    safe = safe.replace(/^[*-] /gm, '• ');
     return safe;
 }
+
+// Deteksi blok tabel markdown (baris | ... | dengan pemisah |---|)
+function renderTables(text) {
+    const lines = text.split('\n');
+    const output = [];
+    let i = 0;
+
+    while (i < lines.length) {
+        const isTableLine = (l) => /^\s*\|.*\|\s*$/.test(l);
+        const isSeparator = (l) => /^\s*\|[\s\-:|]+\|\s*$/.test(l);
+
+        if (isTableLine(lines[i]) && i + 1 < lines.length && isSeparator(lines[i + 1])) {
+            const tableLines = [lines[i], lines[i + 1]];
+            let j = i + 2;
+            while (j < lines.length && isTableLine(lines[j])) {
+                tableLines.push(lines[j]);
+                j++;
+            }
+            output.push(buildTable(tableLines));
+            i = j;
+        } else {
+            output.push(lines[i]);
+            i++;
+        }
+    }
+    return output.join('\n');
+}
+
+function buildTable(tableLines) {
+    const parseRow = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+    const header = parseRow(tableLines[0]);
+    const body = tableLines.slice(2).map(parseRow);
+
+    let html = '<table class="ai-table"><thead><tr>';
+    header.forEach(cell => { html += `<th>${cell}</th>`; });
+    html += '</tr></thead><tbody>';
+    body.forEach(row => {
+        html += '<tr>';
+        row.forEach(cell => { html += `<td>${cell}</td>`; });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+}
+
+// ---------- Greeting + Suggestion Chips ----------
+const AI_SUGGESTIONS = [
+    'Apa itu Node.js?',
+    'Buatkan caption Instagram',
+    'Ide konten TikTok',
+    'Buatkan contoh kode JavaScript'
+];
+
+function showAiGreeting() {
+    appendAiMessage(AI_GREETING, 'bot');
+
+    const div = document.createElement('div');
+    div.className = 'ai-suggestions';
+    AI_SUGGESTIONS.forEach(s => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'ai-chip';
+        chip.textContent = s;
+        chip.addEventListener('click', () => {
+            if (aiBusy) return;
+            aiInput.value = s;
+            sendAiMessage();
+        });
+        div.appendChild(chip);
+    });
+    aiMessages.appendChild(div);
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+}
+
+// Tombol Copy pada blok kode (event delegation, berlaku untuk semua bubble)
+aiMessages.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.ai-copy-btn');
+    if (!btn) return;
+    const code = btn.closest('.ai-code')?.querySelector('code')?.textContent || '';
+    try {
+        await navigator.clipboard.writeText(code);
+        btn.textContent = 'Disalin!';
+    } catch (_) {
+        btn.textContent = 'Gagal';
+    }
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+});
 
 function appendAiMessage(text, role) {
     const div = document.createElement('div');
@@ -1330,6 +1437,8 @@ async function sendAiMessage() {
     aiBusy = true;
     aiSendBtn.disabled = true;
     aiInput.value = '';
+
+    aiMessages.querySelector('.ai-suggestions')?.remove();
 
     appendAiMessage(question, 'user');
     showAiTyping();
