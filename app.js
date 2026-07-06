@@ -1236,6 +1236,24 @@ const aiSendBtn = document.getElementById('ai-send-btn');
 
 let aiBusy = false;
 
+// Model AI yang tersedia (endpoint Neoxr, format respons sama)
+const AI_MODELS = {
+    gpt: { endpoint: 'gpt-pro', label: 'GPT' },
+    gemini: { endpoint: 'gemini-chat', label: 'Gemini' }
+};
+let aiModel = 'gpt';
+
+document.querySelectorAll('.ai-model-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (aiBusy || btn.dataset.model === aiModel) return;
+        aiModel = btn.dataset.model;
+        document.querySelectorAll('.ai-model-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.model === aiModel);
+        });
+        appendAiMessage(`Model diganti ke ${AI_MODELS[aiModel].label} ✨`, 'bot');
+    });
+});
+
 const AI_GREETING = 'Halo! Saya NullXD AI 🤖\nTanyakan apa saja — teknologi, tips, atau hal lain yang ingin kamu tahu.';
 
 aiClearBtn.addEventListener('click', () => {
@@ -1270,6 +1288,8 @@ function escapeHtml(text) {
 
 function formatAiMessage(text) {
     let safe = escapeHtml(text);
+    safe = safe.replace(/^#{1,3} (.+)$/gm, '<strong class="ai-h">$1</strong>');
+    safe = safe.replace(/^---+$/gm, '<span class="ai-hr"></span>');
     safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     safe = safe.replace(/`([^`\n]+)`/g, '<code>$1</code>');
     safe = safe.replace(/^\* /gm, '• ');
@@ -1314,7 +1334,8 @@ async function sendAiMessage() {
     showAiTyping();
 
     try {
-        const apiUrl = `${API_BASE_URL}/gpt-pro?q=${encodeURIComponent(question)}&apikey=${API_KEY}`;
+        const endpoint = AI_MODELS[aiModel].endpoint;
+        const apiUrl = `${API_BASE_URL}/${endpoint}?q=${encodeURIComponent(question)}&apikey=${API_KEY}`;
         const result = await fetchJson(apiUrl);
 
         hideAiTyping();
