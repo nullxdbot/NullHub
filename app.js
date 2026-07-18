@@ -268,7 +268,7 @@ function displayResult(data) {
             username.textContent = 'Instagram Downloader';
             nickname.textContent = '';
         } else if (currentPlatform === 'youtube') {
-            avatar.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/240px-YouTube_full-color_icon_%282017%29.svg.png';
+            avatar.src = 'img/YouTube_icon.webp';
             username.textContent = data.channel || 'YouTube';
             nickname.textContent = '';
         } else if (currentPlatform === 'facebook') {
