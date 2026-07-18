@@ -1520,14 +1520,8 @@ function switchPage(pageName) {
     // Kunci scroll body saat di halaman chat agar layout tidak lompat
     document.body.classList.toggle('ai-page-active', pageName === 'ai');
 
-    // Aksen mengikuti halaman
-    if (pageName === 'downloader') {
-        applyAccent(currentPlatform);
-    } else if (pageName === 'tools') {
-        applyAccent('tools');
-    } else {
-        applyAccent('default');
-    }
+    // Aksen seragam di semua halaman: mengikuti platform aktif
+    applyAccent(currentPlatform);
 
     window.scrollTo({ top: 0, behavior: 'instant' });
 
