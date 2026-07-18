@@ -1846,3 +1846,219 @@ chordCopy.addEventListener('click', async () => {
 
 // Aksen awal mengikuti platform default (TikTok) saat halaman dimuat
 applyAccent(currentPlatform);
+
+// ============================================================
+// Tools Generik — 7 tool baru dari plugin bot (config-driven)
+// Menambah tool baru = menambah satu objek di NULL_TOOLS
+// ============================================================
+function toolFetch(endpoint, params = {}) {
+    const qs = Object.entries(params)
+        .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+        .join('&');
+    return fetchJson(`${API_BASE_URL}/${endpoint}?${qs}${qs ? '&' : ''}apikey=${API_KEY}`);
+}
+
+const NULL_TOOLS = [
+    {
+        icon: '🎤', title: 'Lirik Lagu', desc: 'Cari lirik lagu apa saja',
+        inputs: [{ placeholder: 'Judul lagu, mis. mawar hitam' }], btn: 'Cari',
+        run: async ([q]) => {
+            const j = await toolFetch('lyric', { q });
+            if (!j.status || !j.data?.lyric) throw j;
+            return { title: j.data.title || q, pre: j.data.lyric };
+        }
+    },
+    {
+        icon: '⛅', title: 'Prakiraan Cuaca', desc: 'Cuaca per kecamatan (BMKG)',
+        inputs: [{ placeholder: 'Nama kecamatan, mis. Cibinong' }], btn: 'Cek',
+        run: async ([q]) => {
+            const j = await toolFetch('cuaca', { subdistrict: q });
+            if (!j.status || !j.data?.result) throw j;
+            return {
+                title: `Kec. ${j.data.subdistrict}, ${j.data.regency}, ${j.data.province}`,
+                rows: j.data.result.map(v => ({
+                    k: `Pukul ${v.time}`,
+                    v: `${v.weather} • ${v.temperature} • angin ${v.wind}`
+                }))
+            };
+        }
+    },
+    {
+        icon: '🕌', title: 'Jadwal Sholat', desc: 'Waktu sholat per kota hari ini',
+        inputs: [{ placeholder: 'Nama kota, mis. Bandung' }], btn: 'Cek',
+        run: async ([q]) => {
+            const j = await toolFetch('sholat', { q });
+            if (!j.status || !Array.isArray(j.data)) throw j;
+            return {
+                title: `${j.city || q} • ${j.date || ''}`,
+                rows: j.data.map(v => {
+                    const key = Object.keys(v)[0];
+                    return { k: key.charAt(0).toUpperCase() + key.slice(1), v: Object.values(v)[0] };
+                })
+            };
+        }
+    },
+    {
+        icon: '🌍', title: 'Info Gempa Terkini', desc: 'Data gempa terbaru dari BMKG',
+        inputs: [], btn: 'Cek Gempa',
+        run: async () => {
+            const j = await toolFetch('gempa');
+            if (!j.status || !j.data) throw j;
+            const d = j.data;
+            return {
+                title: `Magnitudo ${d.magnitudo} — ${d.wilayah}`,
+                rows: [
+                    { k: 'Waktu', v: d.waktu },
+                    { k: 'Kedalaman', v: d.kedalaman },
+                    { k: 'Koordinat', v: `${d.lintang}, ${d.bujur}` },
+                    { k: 'Zona', v: d.zona },
+                    { k: 'Arahan', v: d.arahan }
+                ].filter(r => r.v),
+                image: d.map || null
+            };
+        }
+    },
+    {
+        icon: '📸', title: 'Screenshot Website', desc: 'Ambil tangkapan layar sebuah situs',
+        inputs: [{ placeholder: 'https://contoh.com' }], btn: 'Ambil',
+        run: async ([q]) => {
+            if (!isValidUrl(q)) throw { msg: 'URL tidak valid, sertakan https://' };
+            const j = await toolFetch('ss', { url: q });
+            if (!j.status || !j.data?.url) throw j;
+            return { image: j.data.url };
+        }
+    },
+    {
+        icon: '😂', title: 'Emoji Mix', desc: 'Gabungkan dua emoji jadi satu gambar',
+        inputs: [{ placeholder: '😀', small: true }, { placeholder: '😎', small: true }], btn: 'Mix',
+        run: async ([a, b]) => {
+            const j = await toolFetch('emoji', { q: `${a}_${b}` });
+            if (!j.status || !j.data?.url) throw j;
+            return { image: j.data.url };
+        }
+    },
+    {
+        icon: '🎨', title: 'Brat Generator', desc: 'Teks jadi gambar gaya brat',
+        inputs: [{ placeholder: 'Ketik teksnya...' }], btn: 'Buat',
+        run: async ([q]) => {
+            const j = await toolFetch('brat', { text: q });
+            if (!j.status || !j.data?.url) throw j;
+            return { image: j.data.url };
+        }
+    }
+];
+
+function buildToolCard(cfg) {
+    const card = document.createElement('div');
+    card.className = 'tool-card';
+
+    const head = document.createElement('div');
+    head.className = 'tool-head';
+    head.innerHTML = '<h3></h3><p></p>';
+    head.querySelector('h3').textContent = `${cfg.icon} ${cfg.title}`;
+    head.querySelector('p').textContent = cfg.desc;
+    card.appendChild(head);
+
+    const row = document.createElement('div');
+    row.className = 'tool-input-row';
+    const inputEls = cfg.inputs.map(inp => {
+        const el = document.createElement('input');
+        el.type = 'text';
+        el.placeholder = inp.placeholder;
+        el.autocomplete = 'off';
+        if (inp.small) el.classList.add('tool-input-small');
+        row.appendChild(el);
+        return el;
+    });
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tool-btn';
+    btn.textContent = cfg.btn;
+    row.appendChild(btn);
+    card.appendChild(row);
+
+    const result = document.createElement('div');
+    result.className = 'tool-result';
+    result.style.display = 'none';
+    card.appendChild(result);
+
+    async function runTool() {
+        const values = inputEls.map(el => el.value.trim());
+        if (cfg.inputs.length > 0 && values.some(v => !v)) {
+            showNotification('Isi dulu kolomnya!', 'error');
+            return;
+        }
+
+        btn.disabled = true;
+        const label = btn.textContent;
+        btn.textContent = 'Memuat...';
+        result.style.display = 'none';
+
+        try {
+            const out = await cfg.run(values);
+            renderToolResult(result, out);
+        } catch (e) {
+            console.error(`${cfg.title} error:`, e);
+            showApiError(e && e.msg ? e : (e && e.status === false ? e : {}));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = label;
+        }
+    }
+
+    btn.addEventListener('click', runTool);
+    inputEls.forEach(el => el.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') runTool();
+    }));
+
+    return card;
+}
+
+function renderToolResult(el, out) {
+    el.innerHTML = '';
+
+    if (out.title) {
+        const t = document.createElement('div');
+        t.className = 'tool-result-title';
+        t.textContent = out.title;
+        el.appendChild(t);
+    }
+
+    if (out.rows) {
+        const wrap = document.createElement('div');
+        wrap.className = 'tool-rows';
+        out.rows.forEach(r => {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'tool-row';
+            rowEl.innerHTML = '<span class="tr-k"></span><span class="tr-v"></span>';
+            rowEl.querySelector('.tr-k').textContent = r.k;
+            rowEl.querySelector('.tr-v').textContent = r.v;
+            wrap.appendChild(rowEl);
+        });
+        el.appendChild(wrap);
+    }
+
+    if (out.pre) {
+        const pre = document.createElement('pre');
+        pre.className = 'tool-pre';
+        pre.textContent = out.pre;
+        el.appendChild(pre);
+    }
+
+    if (out.image) {
+        const img = document.createElement('img');
+        img.className = 'tool-img';
+        img.loading = 'lazy';
+        img.alt = 'Hasil';
+        img.src = out.image;
+        el.appendChild(img);
+    }
+
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Render semua tool ke halaman Tools (setelah kartu Chord yang sudah ada)
+const toolsPageEl = document.getElementById('page-tools');
+NULL_TOOLS.forEach(cfg => toolsPageEl.appendChild(buildToolCard(cfg)));

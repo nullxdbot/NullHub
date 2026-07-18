@@ -2090,3 +2090,80 @@ body::after {
     object-fit: cover;
     display: block;
 }
+
+/* ============================================================
+   Tools Generik — hasil tool (rows, pre, gambar)
+   ============================================================ */
+.tool-card + .tool-card {
+    margin-top: 16px;
+}
+
+.tool-input-small {
+    max-width: 80px;
+    text-align: center;
+    font-size: 18px !important;
+}
+
+.tool-result {
+    margin-top: 16px;
+    background: #0d0d1a;
+    border: 1px solid rgba(var(--ac-rgb), 0.25);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: pageIn 0.3s ease;
+}
+
+.tool-result-title {
+    padding: 10px 14px;
+    background: rgba(var(--ac-rgb), 0.12);
+    border-bottom: 1px solid rgba(var(--ac-rgb), 0.2);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-light);
+}
+
+.tool-rows {
+    padding: 8px 0;
+}
+
+.tool-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 14px;
+    font-size: 13px;
+}
+
+.tool-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.tr-k {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.tr-v {
+    color: var(--text-primary);
+    text-align: right;
+    word-break: break-word;
+}
+
+.tool-pre {
+    margin: 0;
+    padding: 16px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.tool-img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
