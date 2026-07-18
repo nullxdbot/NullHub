@@ -1919,31 +1919,111 @@ const NULL_TOOLS = [
         }
     },
     {
-        icon: '📸', title: 'Screenshot Website', desc: 'Ambil tangkapan layar sebuah situs',
-        inputs: [{ placeholder: 'https://contoh.com' }], btn: 'Ambil',
+        icon: '🔎', title: 'Google Search', desc: 'Cari apa saja di Google',
+        inputs: [{ placeholder: 'Kata kunci pencarian...' }], btn: 'Cari',
         run: async ([q]) => {
-            if (!isValidUrl(q)) throw { msg: 'URL tidak valid, sertakan https://' };
-            const j = await toolFetch('ss', { url: q });
-            if (!j.status || !j.data?.url) throw j;
-            return { image: j.data.url };
+            const j = await toolFetch('google', { q });
+            if (!j.status || !Array.isArray(j.data)) throw j;
+            return {
+                links: j.data.slice(0, 10).map(v => ({
+                    title: v.title, desc: v.description, url: v.url
+                }))
+            };
         }
     },
     {
-        icon: '😂', title: 'Emoji Mix', desc: 'Gabungkan dua emoji jadi satu gambar',
-        inputs: [{ placeholder: '😀', small: true }, { placeholder: '😎', small: true }], btn: 'Mix',
-        run: async ([a, b]) => {
-            const j = await toolFetch('emoji', { q: `${a}_${b}` });
-            if (!j.status || !j.data?.url) throw j;
-            return { image: j.data.url };
+        icon: '🍳', title: 'Resep Masakan', desc: 'Cari resep lengkap dengan langkahnya',
+        inputs: [{ placeholder: 'Nama masakan, mis. rendang' }], btn: 'Cari',
+        run: async ([q]) => {
+            const j = await toolFetch('resep', { q });
+            if (!j.status || !j.data) throw j;
+            const d = j.data;
+            let pre = 'BAHAN-BAHAN\n';
+            pre += (d.ingredients || []).map(v => '• ' + v).join('\n');
+            pre += '\n\nLANGKAH-LANGKAH\n';
+            pre += (d.steps || []).join('\n');
+            return {
+                title: d.title || q,
+                rows: [
+                    { k: 'Waktu', v: d.timeout },
+                    { k: 'Porsi', v: d.portion }
+                ].filter(r => r.v),
+                image: d.thumbnail || null,
+                pre
+            };
         }
     },
     {
-        icon: '🎨', title: 'Brat Generator', desc: 'Teks jadi gambar gaya brat',
-        inputs: [{ placeholder: 'Ketik teksnya...' }], btn: 'Buat',
+        icon: '🎬', title: 'Cari Film', desc: 'Info film + link streaming',
+        inputs: [{ placeholder: 'Judul film...' }], btn: 'Cari',
         run: async ([q]) => {
-            const j = await toolFetch('brat', { text: q });
-            if (!j.status || !j.data?.url) throw j;
-            return { image: j.data.url };
+            const j = await toolFetch('film', { q });
+            if (!j.status || !Array.isArray(j.data) || j.data.length === 0) throw j;
+            return {
+                list: j.data.slice(0, 10).map(v => ({
+                    title: v.title,
+                    desc: Object.entries(v).filter(([k]) => !/title|url/.test(k)).map(([, val]) => val).join(' • '),
+                    run: async () => {
+                        const d = await toolFetch('film-get', { url: v.url });
+                        if (!d.status || !d.data) throw d;
+                        const links = [];
+                        (d.stream || []).forEach(s => links.push({ title: `▶ Stream: ${s.server}`, desc: '', url: s.url }));
+                        (d.download || []).forEach(s => links.push({ title: `⬇ Download: ${s.provider}`, desc: '', url: s.url }));
+                        return {
+                            title: d.data.title || v.title,
+                            rows: Object.entries(d.data)
+                                .filter(([k]) => !/thumbnail|title/.test(k))
+                                .map(([k, val]) => ({ k: k.charAt(0).toUpperCase() + k.slice(1), v: String(val) })),
+                            image: d.data.thumbnail || null,
+                            links
+                        };
+                    }
+                }))
+            };
+        }
+    },
+    {
+        icon: '💼', title: 'Lowongan Kerja', desc: 'Cari loker terbaru',
+        inputs: [{ placeholder: 'Posisi/kata kunci, mis. programmer' }], btn: 'Cari',
+        run: async ([q]) => {
+            const j = await toolFetch('job', { q });
+            if (!j.status || !Array.isArray(j.data) || j.data.length === 0) throw j;
+            return {
+                list: j.data.slice(0, 10).map(v => ({
+                    title: v.job,
+                    desc: [v.company, v.location, v.salary, v.publish].filter(Boolean).join(' • '),
+                    run: async () => {
+                        const d = await toolFetch('job', { url: v.url });
+                        if (!d.status || !d.data) throw d;
+                        return {
+                            title: `${d.data.position || v.job} — ${d.data.company || ''}`,
+                            rows: [
+                                { k: 'Lokasi', v: d.data.location },
+                                { k: 'Waktu', v: d.data.type },
+                                { k: 'Gaji', v: d.data.salary }
+                            ].filter(r => r.v),
+                            pre: Array.isArray(d.data.information)
+                                ? 'SYARAT & JOBDESK\n' + d.data.information.filter(x => x !== '\n\n').map(x => '• ' + x).join('\n')
+                                : null,
+                            links: d.data.apply_url ? [{ title: '📩 Lamar lowongan ini', desc: '', url: d.data.apply_url }] : []
+                        };
+                    }
+                }))
+            };
+        }
+    },
+    {
+        icon: '📌', title: 'Pinterest Search', desc: 'Cari gambar dari Pinterest',
+        inputs: [{ placeholder: 'Kata kunci, mis. aesthetic wallpaper' }], btn: 'Cari',
+        run: async ([q]) => {
+            const j = await toolFetch('pinterest-v2', { q, show: 20, type: 'image' });
+            if (!j.status || !Array.isArray(j.data)) throw j;
+            const images = j.data
+                .map(v => v.content?.[0]?.url)
+                .filter(u => u && !/m3u8|gif/.test(u))
+                .slice(0, 12);
+            if (images.length === 0) throw { msg: 'Tidak ada gambar ditemukan' };
+            return { images };
         }
     }
 ];
@@ -1966,7 +2046,6 @@ function buildToolCard(cfg) {
         el.type = 'text';
         el.placeholder = inp.placeholder;
         el.autocomplete = 'off';
-        if (inp.small) el.classList.add('tool-input-small');
         row.appendChild(el);
         return el;
     });
@@ -2053,6 +2132,65 @@ function renderToolResult(el, out) {
         img.alt = 'Hasil';
         img.src = out.image;
         el.appendChild(img);
+    }
+
+    if (out.links && out.links.length > 0) {
+        const wrap = document.createElement('div');
+        wrap.className = 'tool-links';
+        out.links.forEach(l => {
+            const a = document.createElement('a');
+            a.className = 'tool-link';
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.href = l.url;
+            a.innerHTML = '<strong></strong><span></span>';
+            a.querySelector('strong').textContent = l.title;
+            a.querySelector('span').textContent = l.desc || l.url;
+            wrap.appendChild(a);
+        });
+        el.appendChild(wrap);
+    }
+
+    if (out.images) {
+        const grid = document.createElement('div');
+        grid.className = 'tool-gallery';
+        out.images.forEach(u => {
+            const img = document.createElement('img');
+            img.loading = 'lazy';
+            img.alt = 'Hasil';
+            img.src = u;
+            img.addEventListener('click', () => window.open(u, '_blank', 'noopener'));
+            grid.appendChild(img);
+        });
+        el.appendChild(grid);
+    }
+
+    if (out.list) {
+        const wrap = document.createElement('div');
+        wrap.className = 'tool-links';
+        out.list.forEach(item => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'tool-link';
+            b.innerHTML = '<strong></strong><span></span>';
+            b.querySelector('strong').textContent = item.title;
+            b.querySelector('span').textContent = item.desc || '';
+            b.addEventListener('click', async () => {
+                b.disabled = true;
+                b.querySelector('span').textContent = 'Memuat...';
+                try {
+                    const detail = await item.run();
+                    renderToolResult(el, detail);
+                } catch (e) {
+                    console.error('Detail error:', e);
+                    b.disabled = false;
+                    b.querySelector('span').textContent = item.desc || '';
+                    showApiError(e && e.status === false ? e : {});
+                }
+            });
+            wrap.appendChild(b);
+        });
+        el.appendChild(wrap);
     }
 
     el.style.display = 'block';

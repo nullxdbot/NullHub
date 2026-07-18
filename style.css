@@ -2098,11 +2098,6 @@ body::after {
     margin-top: 16px;
 }
 
-.tool-input-small {
-    max-width: 80px;
-    text-align: center;
-    font-size: 18px !important;
-}
 
 .tool-result {
     margin-top: 16px;
@@ -2166,4 +2161,78 @@ body::after {
     display: block;
     width: 100%;
     height: auto;
+}
+
+/* ============================================================
+   Tools — link list, galeri gambar, daftar pilihan
+   ============================================================ */
+.tool-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+}
+
+.tool-link {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xs);
+    padding: 11px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: 'Poppins', sans-serif;
+    transition: var(--transition);
+}
+
+.tool-link:hover,
+.tool-link:active {
+    background: rgba(var(--ac-rgb), 0.15);
+    border-color: rgba(var(--ac-rgb), 0.4);
+}
+
+.tool-link:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.tool-link strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-light);
+    line-height: 1.4;
+}
+
+.tool-link span {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.tool-gallery {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 12px;
+}
+
+.tool-gallery img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tool-gallery img:active {
+    transform: scale(0.96);
 }
