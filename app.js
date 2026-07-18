@@ -76,7 +76,7 @@ function setActivePlatform(platform) {
 }
 
 function updateInputPlaceholder() {
-    urlInput.placeholder = MUSIC_PLATFORMS.includes(currentPlatform)
+    urlInput.placeholder = (MUSIC_PLATFORMS.includes(currentPlatform) || currentPlatform === 'youtube')
         ? 'Tempel link atau ketik judul lagu...'
         : 'Tempel URL video di sini...';
 }
@@ -162,6 +162,10 @@ async function handleDownload() {
     if (!isValidUrl(url)) {
         if (MUSIC_PLATFORMS.includes(currentPlatform)) {
             searchMusic(url);
+            return;
+        }
+        if (currentPlatform === 'youtube') {
+            playYoutube(url);
             return;
         }
         showNotification('URL tidak valid! Pastikan URL lengkap dengan https://', 'error');
@@ -572,16 +576,15 @@ function renderPhotoSlider(videoContainer, photoArray) {
 // Audio Player Renderer (Spotify / SoundCloud / Apple Music)
 // ============================================================
 function renderAudioPlayer(videoContainer, data) {
-    let title = data.title || '';
-    let thumb = data.thumbnail || '';
-    let audioUrl = '';
+    const audioUrl = currentPlatform === 'applemusic' ? (data.audio?.url || '') : (data.url || '');
+    renderMusicCard(videoContainer, {
+        title: data.title || '',
+        thumb: data.thumbnail || '',
+        audioUrl
+    });
+}
 
-    if (currentPlatform === 'applemusic') {
-        audioUrl = data.audio?.url || '';
-    } else {
-        audioUrl = data.url || '';
-    }
-
+function renderMusicCard(videoContainer, { title, thumb, audioUrl }) {
     videoContainer.innerHTML = `
         <div class="music-card">
             <img class="music-thumb" alt="Cover" loading="lazy">
@@ -1178,6 +1181,66 @@ function renderMusicSearchResults(items, conf) {
 
         list.appendChild(item);
     });
+
+    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// YT Play — ketik judul lagu di tab YouTube, langsung dapat audio
+// Endpoint /play: {status, title, duration, thumbnail, data:{url, size, quality}}
+// ============================================================
+async function playYoutube(query) {
+    downloadBtn.disabled = true;
+    loadingEl.style.display = 'block';
+    resultSection.style.display = 'none';
+
+    try {
+        const json = await fetchJson(`${API_BASE_URL}/play?q=${encodeURIComponent(query)}&apikey=${API_KEY}`);
+
+        if (!json.status || !json.data || !json.data.url) {
+            showApiError(json);
+            return;
+        }
+
+        displayPlayResult(json);
+    } catch (error) {
+        console.error('Play error:', error);
+        showNotification('Terjadi kesalahan. Periksa koneksi internet Anda atau coba lagi nanti.', 'error');
+    } finally {
+        loadingEl.style.display = 'none';
+        downloadBtn.disabled = false;
+    }
+}
+
+function displayPlayResult(json) {
+    resultSection.style.display = 'block';
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('tiktok-card').style.display = 'block';
+    document.getElementById('regular-preview').style.display = 'none';
+
+    document.getElementById('tiktok-avatar').src = 'img/YouTube_icon.webp';
+    document.getElementById('tiktok-username').textContent = 'YT Play';
+    document.getElementById('tiktok-nickname').textContent = json.duration || '';
+
+    document.querySelector('.tiktok-stats').style.display = 'none';
+    document.getElementById('tiktok-published').style.display = 'none';
+    document.getElementById('tiktok-music').style.display = 'none';
+
+    renderMusicCard(document.querySelector('.tiktok-video-container'), {
+        title: json.title || '',
+        thumb: json.thumbnail || '',
+        audioUrl: json.data.url
+    });
+
+    document.getElementById('tiktok-caption-text').textContent = json.title || 'YouTube Audio';
+
+    downloadOptions.innerHTML = '';
+    downloadOptions.appendChild(createDownloadOptionSimple({
+        url: json.data.url,
+        type: 'Audio MP3',
+        desc: [json.data.size, json.data.quality].filter(Boolean).join(' • ') || (json.title || 'YouTube Audio'),
+        icon: 'audio'
+    }));
 
     resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
