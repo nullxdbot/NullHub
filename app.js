@@ -34,10 +34,13 @@ const VIDEO_TYPES = ['mp4', 'gif'];
 // Dynamic Accent — warna UI mengikuti platform/halaman aktif
 // Format: [aksen, aksen gelap, aksen terang, rgb aksen, rgb gelap]
 // ============================================================
+// Set false untuk kembali ke ungu statis (mematikan aksen dinamis)
+const DYNAMIC_ACCENT = true;
+
 const ACCENTS = {
     default: ['#8b5cf6', '#7c3aed', '#a78bfa', '139, 92, 246', '124, 58, 237'],
-    tiktok: ['#00d9d0', '#fe2c55', '#7ffcf7', '0, 217, 208', '254, 44, 85'],
-    douyin: ['#00d9d0', '#fe2c55', '#7ffcf7', '0, 217, 208', '254, 44, 85'],
+    tiktok: ['#fe2c55', '#d11a40', '#ff8aa1', '254, 44, 85', '209, 26, 64'],
+    douyin: ['#fe2c55', '#d11a40', '#ff8aa1', '254, 44, 85', '209, 26, 64'],
     instagram: ['#e1306c', '#f77737', '#fda1c0', '225, 48, 108', '247, 119, 55'],
     youtube: ['#ff3838', '#cc0000', '#ff8a8a', '255, 56, 56', '204, 0, 0'],
     facebook: ['#1877f2', '#0e5fcb', '#7ab3f7', '24, 119, 242', '14, 95, 203'],
@@ -54,6 +57,7 @@ const ACCENTS = {
 };
 
 function applyAccent(key) {
+    if (!DYNAMIC_ACCENT) key = 'default';
     const [ac, ac2, light, rgb, rgb2] = ACCENTS[key] || ACCENTS.default;
     const root = document.documentElement.style;
     root.setProperty('--ac', ac);
