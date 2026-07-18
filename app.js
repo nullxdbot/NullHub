@@ -133,6 +133,21 @@ async function fetchJson(url) {
     return response.json();
 }
 
+// Versi toleran: kalau satu endpoint gagal, kembalikan {status:false}
+// alih-alih melempar error (supaya Promise.all tidak ikut gagal semua)
+function safeJson(url) {
+    return fetchJson(url).catch(() => ({ status: false }));
+}
+
+// Tampilkan alasan asli dari API kalau ada, supaya error mudah didiagnosis
+function showApiError(json) {
+    const apiMsg = json && (json.msg || json.message);
+    showNotification(
+        apiMsg ? `Gagal: ${apiMsg}` : 'Gagal mengambil data. Pastikan URL benar dan platform didukung.',
+        'error'
+    );
+}
+
 // ============================================================
 // Main Handler
 // ============================================================
@@ -168,26 +183,26 @@ async function handleDownload() {
             const audioUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&type=audio&quality=128kbps&apikey=${API_KEY}`;
 
             const [videoData, audioData] = await Promise.all([
-                fetchJson(videoUrl),
-                fetchJson(audioUrl)
+                safeJson(videoUrl),
+                safeJson(audioUrl)
             ]);
 
-            if (videoData.status && audioData.status) {
+            if (videoData.status) {
                 currentData = {
                     ...videoData,
-                    audioData: audioData.data
+                    audioData: audioData.status ? audioData.data : null
                 };
                 displayResult(currentData);
             } else {
-                showNotification('Gagal mengambil data. Pastikan URL benar dan platform didukung.', 'error');
+                showApiError(videoData);
             }
         } else if (currentPlatform === 'pinterest') {
             const pinV1Url = `${API_BASE_URL}/pin?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
             const pinV2Url = `${API_BASE_URL}/pin-v2?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
 
             const [v1Data, v2Data] = await Promise.all([
-                fetchJson(pinV1Url),
-                fetchJson(pinV2Url)
+                safeJson(pinV1Url),
+                safeJson(pinV2Url)
             ]);
 
             if (v2Data.status) {
@@ -196,8 +211,17 @@ async function handleDownload() {
                     v1Data: v1Data.status ? v1Data.data : null
                 };
                 displayResult(currentData);
+            } else if (v1Data.status && v1Data.data) {
+                // Fallback: v2 gagal tapi v1 sukses (umumnya video)
+                currentData = {
+                    title: v1Data.data.title || '',
+                    is_video: v1Data.data.type === 'mp4',
+                    content: [],
+                    v1Data: v1Data.data
+                };
+                displayResult(currentData);
             } else {
-                showNotification('Gagal mengambil data. Pastikan URL benar dan platform didukung.', 'error');
+                showApiError(v2Data);
             }
         } else {
             const apiUrl = `${API_BASE_URL}/${endpoint}?url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
@@ -214,7 +238,7 @@ async function handleDownload() {
                 }
                 displayResult(currentData);
             } else {
-                showNotification('Gagal mengambil data. Pastikan URL benar dan platform didukung.', 'error');
+                showApiError(data);
             }
         }
     } catch (error) {
