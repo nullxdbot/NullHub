@@ -1781,3 +1781,40 @@ body.ai-page-active {
     color: white;
     border-color: var(--primary);
 }
+
+/* ============================================================
+   Music Card (Spotify / SoundCloud / Apple Music)
+   ============================================================ */
+.music-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 24px 20px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(124, 58, 237, 0.04));
+}
+
+.music-thumb {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.music-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.music-card audio {
+    width: 100%;
+    max-width: 340px;
+    height: 40px;
+}

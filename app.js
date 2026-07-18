@@ -22,7 +22,13 @@ let currentData = null;
 let currentSlideIndex = 0;
 
 // Platform yang API-nya mengembalikan array item {type, url} seperti Instagram
-const ARRAY_PLATFORMS = ['instagram', 'xiaohongshu', 'threads'];
+const ARRAY_PLATFORMS = ['instagram', 'xiaohongshu', 'threads', 'twitter'];
+
+// Platform audio: respons berupa info lagu + URL mp3
+const MUSIC_PLATFORMS = ['spotify', 'soundcloud', 'applemusic'];
+
+// Tipe item yang dianggap video pada array platforms (gif Twitter = video mp4)
+const VIDEO_TYPES = ['mp4', 'gif'];
 
 // ============================================================
 // Auto-deteksi platform dari URL
@@ -37,7 +43,11 @@ const PLATFORM_HOSTS = [
     { platform: 'capcut', hosts: ['capcut.com'] },
     { platform: 'xiaohongshu', hosts: ['xiaohongshu.com', 'xhslink.com'] },
     { platform: 'threads', hosts: ['threads.net', 'threads.com'] },
-    { platform: 'pixiv', hosts: ['pixiv.net'] }
+    { platform: 'pixiv', hosts: ['pixiv.net'] },
+    { platform: 'twitter', hosts: ['twitter.com', 'x.com'] },
+    { platform: 'spotify', hosts: ['spotify.com', 'open.spotify.com'] },
+    { platform: 'soundcloud', hosts: ['soundcloud.com'] },
+    { platform: 'applemusic', hosts: ['music.apple.com'] }
 ];
 
 function detectPlatformFromUrl(url) {
@@ -215,7 +225,11 @@ function getApiEndpoint(platform) {
         'xiaohongshu': 'xiaohongshu',
         'douyin': 'douyin',
         'threads': 'threads',
-        'pixiv': 'pixiv'
+        'pixiv': 'pixiv',
+        'twitter': 'twitter',
+        'spotify': 'spotify',
+        'soundcloud': 'soundcloud',
+        'applemusic': 'applemusic'
     };
     return endpoints[platform] || 'tiktok';
 }
@@ -238,7 +252,7 @@ function displayResult(data) {
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
 
-    const cardPlatforms = ['tiktok', 'instagram', 'youtube', 'facebook', 'pinterest', 'capcut', 'xiaohongshu', 'douyin', 'threads', 'pixiv'];
+    const cardPlatforms = ['tiktok', 'instagram', 'youtube', 'facebook', 'pinterest', 'capcut', 'xiaohongshu', 'douyin', 'threads', 'pixiv', 'twitter', 'spotify', 'soundcloud', 'applemusic'];
 
     if (cardPlatforms.includes(currentPlatform)) {
         tiktokCard.style.display = 'block';
@@ -285,6 +299,22 @@ function displayResult(data) {
             avatar.src = 'img/pixiv_icon.webp';
             username.textContent = data.author?.name || 'Pixiv';
             nickname.textContent = data.author?.username ? `@${data.author.username}` : '';
+        } else if (currentPlatform === 'twitter') {
+            avatar.src = 'img/X_icon.webp';
+            username.textContent = 'Twitter / X';
+            nickname.textContent = '';
+        } else if (currentPlatform === 'spotify') {
+            avatar.src = 'img/Spotify_icon.webp';
+            username.textContent = data.artist?.name || 'Spotify';
+            nickname.textContent = data.duration || '';
+        } else if (currentPlatform === 'soundcloud') {
+            avatar.src = 'img/SoundCloud_icon.webp';
+            username.textContent = 'SoundCloud';
+            nickname.textContent = '';
+        } else if (currentPlatform === 'applemusic') {
+            avatar.src = 'img/AppleMusic_icon.webp';
+            username.textContent = data.album || 'Apple Music';
+            nickname.textContent = data.published || '';
         } else {
             avatar.src = data.author?.avatarThumb || data.author?.avatar_thumb?.url_list?.[0] || data.author?.avatarMedium || data.author?.avatar_medium?.url_list?.[0] || '';
             username.textContent = data.author?.nickname || 'Unknown User';
@@ -298,10 +328,10 @@ function displayResult(data) {
         let hasVideo = false;
 
         if (ARRAY_PLATFORMS.includes(currentPlatform)) {
-            // Instagram, Xiaohongshu, Threads: array item {type, url}
+            // Instagram, Xiaohongshu, Threads, Twitter: array item {type, url}
             const items = Array.isArray(data) ? data : [data];
-            const photoItems = items.filter(item => item.type !== 'mp4');
-            const videoItems = items.filter(item => item.type === 'mp4');
+            const photoItems = items.filter(item => !VIDEO_TYPES.includes(item.type));
+            const videoItems = items.filter(item => VIDEO_TYPES.includes(item.type));
 
             if (photoItems.length > 0) {
                 photoArray = photoItems.map(item => item.url);
@@ -329,7 +359,9 @@ function displayResult(data) {
             hasVideo = data.video || data.videoWM;
         }
 
-        if (photoArray && photoArray.length > 0 && !hasVideo) {
+        if (MUSIC_PLATFORMS.includes(currentPlatform)) {
+            renderAudioPlayer(videoContainer, data);
+        } else if (photoArray && photoArray.length > 0 && !hasVideo) {
             renderPhotoSlider(videoContainer, photoArray);
         } else {
             renderVideoPlayer(videoContainer, data);
@@ -345,6 +377,14 @@ function displayResult(data) {
             captionText.textContent = data.caption || data.title || 'Douyin Video';
         } else if (currentPlatform === 'threads') {
             captionText.textContent = 'Threads Post';
+        } else if (currentPlatform === 'twitter') {
+            captionText.textContent = 'Twitter / X Post';
+        } else if (currentPlatform === 'spotify') {
+            captionText.textContent = data.artist?.name ? `${data.title} — ${data.artist.name}` : (data.title || 'Spotify Track');
+        } else if (currentPlatform === 'soundcloud') {
+            captionText.textContent = data.title || 'SoundCloud Track';
+        } else if (currentPlatform === 'applemusic') {
+            captionText.textContent = data.album ? `${data.title} — ${data.album}` : (data.title || 'Apple Music Track');
         } else if (currentPlatform === 'pixiv') {
             const title = data.title || '';
             const desc = data.description || '';
@@ -492,6 +532,43 @@ function renderPhotoSlider(videoContainer, photoArray) {
 }
 
 // ============================================================
+// Audio Player Renderer (Spotify / SoundCloud / Apple Music)
+// ============================================================
+function renderAudioPlayer(videoContainer, data) {
+    let title = data.title || '';
+    let thumb = data.thumbnail || '';
+    let audioUrl = '';
+
+    if (currentPlatform === 'applemusic') {
+        audioUrl = data.audio?.url || '';
+    } else {
+        audioUrl = data.url || '';
+    }
+
+    videoContainer.innerHTML = `
+        <div class="music-card">
+            <img class="music-thumb" alt="Cover" loading="lazy">
+            <div class="music-title"></div>
+            <audio controls preload="none"></audio>
+        </div>
+    `;
+
+    const img = videoContainer.querySelector('.music-thumb');
+    if (thumb) {
+        img.src = thumb;
+    } else {
+        img.remove();
+    }
+
+    videoContainer.querySelector('.music-title').textContent = title;
+
+    const audio = videoContainer.querySelector('audio');
+    if (audioUrl) {
+        audio.src = audioUrl;
+    }
+}
+
+// ============================================================
 // Video Player Renderer
 // ============================================================
 function renderVideoPlayer(videoContainer, data) {
@@ -512,7 +589,7 @@ function renderVideoPlayer(videoContainer, data) {
 
     if (ARRAY_PLATFORMS.includes(currentPlatform)) {
         const items = Array.isArray(data) ? data : [data];
-        const videoItem = items.find(item => item.type === 'mp4');
+        const videoItem = items.find(item => VIDEO_TYPES.includes(item.type));
         if (videoItem) vp.src = videoItem.url;
     } else if (currentPlatform === 'youtube') {
         if (data.data && data.data.url) {
@@ -643,23 +720,40 @@ function displayDownloadOptions(data) {
         return;
     }
 
-    // ---------- Instagram / Xiaohongshu / Threads (array platforms) ----------
+    // ---------- Spotify / SoundCloud / Apple Music ----------
+    if (MUSIC_PLATFORMS.includes(currentPlatform)) {
+        const audioUrl = currentPlatform === 'applemusic' ? data.audio?.url : data.url;
+        if (audioUrl) {
+            downloadOptions.appendChild(createDownloadOptionSimple({
+                url: audioUrl,
+                type: 'Audio MP3',
+                desc: data.title || 'Music',
+                icon: 'audio'
+            }));
+        }
+        return;
+    }
+
+    // ---------- Instagram / Xiaohongshu / Threads / Twitter (array platforms) ----------
     if (ARRAY_PLATFORMS.includes(currentPlatform)) {
         const items = Array.isArray(data) ? data : [data];
         const labels = {
             instagram: { name: 'Instagram', photo: 'Foto', videoDesc: 'Video HD', photoDesc: 'Gambar HD' },
             xiaohongshu: { name: 'Xiaohongshu', photo: 'Image', videoDesc: 'Video', photoDesc: 'Image' },
-            threads: { name: 'Threads', photo: 'Image', videoDesc: 'Video', photoDesc: 'Image' }
+            threads: { name: 'Threads', photo: 'Image', videoDesc: 'Video', photoDesc: 'Image' },
+            twitter: { name: 'Twitter', photo: 'Image', videoDesc: 'Video', photoDesc: 'Image' }
         };
         const label = labels[currentPlatform];
 
         items.forEach((item, index) => {
             if (item && item.url) {
+                const isVideo = VIDEO_TYPES.includes(item.type);
+                const typeName = item.type === 'gif' ? 'GIF' : (isVideo ? 'Video' : label.photo);
                 downloadOptions.appendChild(createDownloadOptionSimple({
                     url: item.url,
-                    type: item.type === 'mp4' ? `Video ${index + 1}` : `${label.photo} ${index + 1}`,
-                    desc: item.type === 'mp4' ? label.videoDesc : label.photoDesc,
-                    icon: item.type === 'mp4' ? 'video' : 'image'
+                    type: `${typeName} ${index + 1}`,
+                    desc: isVideo ? label.videoDesc : label.photoDesc,
+                    icon: isVideo ? 'video' : 'image'
                 }));
             }
         });
@@ -884,7 +978,7 @@ function downloadAllArrayItems(platformName) {
     items.forEach((item, index) => {
         if (item && item.url) {
             setTimeout(() => {
-                const type = item.type === 'mp4' ? 'Video' : 'Foto';
+                const type = VIDEO_TYPES.includes(item.type) ? 'Video' : 'Foto';
                 downloadFile(item.url, `${platformName}_${type}_${index + 1}`, true);
             }, index * 800);
         }
