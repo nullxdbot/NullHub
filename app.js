@@ -72,6 +72,13 @@ function setActivePlatform(platform) {
     platformBtns.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.platform === platform);
     });
+    updateInputPlaceholder();
+}
+
+function updateInputPlaceholder() {
+    urlInput.placeholder = MUSIC_PLATFORMS.includes(currentPlatform)
+        ? 'Tempel link atau ketik judul lagu...'
+        : 'Tempel URL video di sini...';
 }
 
 function autoDetectPlatform() {
@@ -89,6 +96,7 @@ platformBtns.forEach(btn => {
         platformBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentPlatform = btn.dataset.platform;
+        updateInputPlaceholder();
     });
 });
 
@@ -137,6 +145,10 @@ async function handleDownload() {
     }
 
     if (!isValidUrl(url)) {
+        if (MUSIC_PLATFORMS.includes(currentPlatform)) {
+            searchMusic(url);
+            return;
+        }
         showNotification('URL tidak valid! Pastikan URL lengkap dengan https://', 'error');
         return;
     }
@@ -248,6 +260,7 @@ function isValidUrl(string) {
 // ============================================================
 function displayResult(data) {
     resultSection.style.display = 'block';
+    document.getElementById('search-results').style.display = 'none';
 
     const tiktokCard = document.getElementById('tiktok-card');
     const regularPreview = document.getElementById('regular-preview');
@@ -1062,6 +1075,87 @@ async function downloadFile(url, name, silent = false) {
             showNotification('File dibuka di tab baru. Tekan lama / klik kanan untuk menyimpan.', 'info');
         }
     }
+}
+
+// ============================================================
+// Pencarian Musik (Spotify / SoundCloud / Apple Music)
+// Struktur respons mengikuti plugin bot: data = array {title, url, ...}
+// ============================================================
+const MUSIC_SEARCH = {
+    spotify: {
+        endpoint: 'spotify-search',
+        subtitle: (v) => [v.duration, v.popularity ? `Popularitas ${v.popularity}` : ''].filter(Boolean).join(' • ') || 'Spotify'
+    },
+    soundcloud: {
+        endpoint: 'soundcloud-search',
+        subtitle: (v) => v.artist || 'SoundCloud'
+    },
+    applemusic: {
+        endpoint: 'applemusic-search',
+        subtitle: () => 'Apple Music'
+    }
+};
+
+async function searchMusic(query) {
+    downloadBtn.disabled = true;
+    loadingEl.style.display = 'block';
+    resultSection.style.display = 'none';
+
+    try {
+        const conf = MUSIC_SEARCH[currentPlatform];
+        const json = await fetchJson(`${API_BASE_URL}/${conf.endpoint}?q=${encodeURIComponent(query)}&apikey=${API_KEY}`);
+
+        if (!json.status || !Array.isArray(json.data) || json.data.length === 0) {
+            showNotification('Tidak ada hasil untuk kata kunci itu. Coba yang lain.', 'error');
+            return;
+        }
+
+        renderMusicSearchResults(json.data, conf);
+    } catch (error) {
+        console.error('Search error:', error);
+        showNotification('Terjadi kesalahan. Periksa koneksi internet Anda atau coba lagi nanti.', 'error');
+    } finally {
+        loadingEl.style.display = 'none';
+        downloadBtn.disabled = false;
+    }
+}
+
+function renderMusicSearchResults(items, conf) {
+    resultSection.style.display = 'block';
+    document.getElementById('tiktok-card').style.display = 'none';
+    document.getElementById('regular-preview').style.display = 'none';
+    downloadOptions.innerHTML = '';
+
+    const wrap = document.getElementById('search-results');
+    const list = document.getElementById('search-results-list');
+    wrap.style.display = 'block';
+    list.innerHTML = '';
+
+    items.slice(0, 10).forEach((v) => {
+        if (!v || !v.url) return;
+
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'search-result-item';
+        item.innerHTML = `
+            <div class="sr-info">
+                <h4></h4>
+                <p></p>
+            </div>
+            <span class="sr-action">Pilih ›</span>
+        `;
+        item.querySelector('h4').textContent = v.artist ? `${v.artist} – ${v.title}` : (v.title || 'Tanpa judul');
+        item.querySelector('p').textContent = conf.subtitle(v);
+        item.addEventListener('click', () => {
+            urlInput.value = v.url;
+            wrap.style.display = 'none';
+            handleDownload();
+        });
+
+        list.appendChild(item);
+    });
+
+    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ============================================================
