@@ -31,6 +31,39 @@ const MUSIC_PLATFORMS = ['spotify', 'soundcloud', 'applemusic'];
 const VIDEO_TYPES = ['mp4', 'gif'];
 
 // ============================================================
+// Dynamic Accent — warna UI mengikuti platform/halaman aktif
+// Format: [aksen, aksen gelap, aksen terang, rgb aksen, rgb gelap]
+// ============================================================
+const ACCENTS = {
+    default: ['#8b5cf6', '#7c3aed', '#a78bfa', '139, 92, 246', '124, 58, 237'],
+    tiktok: ['#00d9d0', '#fe2c55', '#7ffcf7', '0, 217, 208', '254, 44, 85'],
+    douyin: ['#00d9d0', '#fe2c55', '#7ffcf7', '0, 217, 208', '254, 44, 85'],
+    instagram: ['#e1306c', '#f77737', '#fda1c0', '225, 48, 108', '247, 119, 55'],
+    youtube: ['#ff3838', '#cc0000', '#ff8a8a', '255, 56, 56', '204, 0, 0'],
+    facebook: ['#1877f2', '#0e5fcb', '#7ab3f7', '24, 119, 242', '14, 95, 203'],
+    pinterest: ['#e60023', '#ad081b', '#ff7a8a', '230, 0, 35', '173, 8, 27'],
+    capcut: ['#00e0cf', '#00a89b', '#7df5eb', '0, 224, 207', '0, 168, 155'],
+    xiaohongshu: ['#ff2442', '#cc1c35', '#ff8a9a', '255, 36, 66', '204, 28, 53'],
+    threads: ['#818cf8', '#6366f1', '#c7d2fe', '129, 140, 248', '99, 102, 241'],
+    pixiv: ['#0096fa', '#0077c8', '#66c2ff', '0, 150, 250', '0, 119, 200'],
+    twitter: ['#1d9bf0', '#1878ba', '#8ecdf8', '29, 155, 240', '24, 120, 186'],
+    spotify: ['#1db954', '#169c46', '#6ee7a0', '29, 185, 84', '22, 156, 70'],
+    soundcloud: ['#ff5500', '#cc4400', '#ff9a5c', '255, 85, 0', '204, 68, 0'],
+    applemusic: ['#fa243c', '#c81d30', '#ff7a8a', '250, 36, 60', '200, 29, 48'],
+    tools: ['#14b8a6', '#0d9488', '#5eead4', '20, 184, 166', '13, 148, 136']
+};
+
+function applyAccent(key) {
+    const [ac, ac2, light, rgb, rgb2] = ACCENTS[key] || ACCENTS.default;
+    const root = document.documentElement.style;
+    root.setProperty('--ac', ac);
+    root.setProperty('--ac2', ac2);
+    root.setProperty('--ac-light', light);
+    root.setProperty('--ac-rgb', rgb);
+    root.setProperty('--ac2-rgb', rgb2);
+}
+
+// ============================================================
 // Auto-deteksi platform dari URL
 // ============================================================
 const PLATFORM_HOSTS = [
@@ -73,6 +106,7 @@ function setActivePlatform(platform) {
         btn.classList.toggle('active', btn.dataset.platform === platform);
     });
     updateInputPlaceholder();
+    applyAccent(platform);
 }
 
 function updateInputPlaceholder() {
@@ -97,6 +131,7 @@ platformBtns.forEach(btn => {
         btn.classList.add('active');
         currentPlatform = btn.dataset.platform;
         updateInputPlaceholder();
+        applyAccent(currentPlatform);
     });
 });
 
@@ -1481,6 +1516,15 @@ function switchPage(pageName) {
     // Kunci scroll body saat di halaman chat agar layout tidak lompat
     document.body.classList.toggle('ai-page-active', pageName === 'ai');
 
+    // Aksen mengikuti halaman
+    if (pageName === 'downloader') {
+        applyAccent(currentPlatform);
+    } else if (pageName === 'tools') {
+        applyAccent('tools');
+    } else {
+        applyAccent('default');
+    }
+
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     if (pageName === 'ai' && aiMessages.children.length === 0) {
@@ -1800,3 +1844,6 @@ chordCopy.addEventListener('click', async () => {
     }
     setTimeout(() => { chordCopy.textContent = 'Copy'; }, 1500);
 });
+
+// Aksen awal mengikuti platform default (TikTok) saat halaman dimuat
+applyAccent(currentPlatform);
