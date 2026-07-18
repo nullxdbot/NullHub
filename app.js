@@ -1463,7 +1463,8 @@ console.log('🚀 NullHub Loaded!');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const pageEls = {
     downloader: document.getElementById('page-downloader'),
-    ai: document.getElementById('page-ai')
+    ai: document.getElementById('page-ai'),
+    tools: document.getElementById('page-tools')
 };
 
 function switchPage(pageName) {
@@ -1740,3 +1741,62 @@ async function sendAiMessage() {
         aiInput.focus();
     }
 }
+
+// ============================================================
+// Tools — Chord Gitar (endpoint /chord dari plugin bot)
+// ============================================================
+const chordInput = document.getElementById('chord-input');
+const chordBtn = document.getElementById('chord-btn');
+const chordResult = document.getElementById('chord-result');
+const chordTitle = document.getElementById('chord-title');
+const chordText = document.getElementById('chord-text');
+const chordCopy = document.getElementById('chord-copy');
+
+async function searchChord() {
+    const query = chordInput.value.trim();
+    if (!query) {
+        showNotification('Ketik judul lagu terlebih dahulu!', 'error');
+        return;
+    }
+
+    chordBtn.disabled = true;
+    chordBtn.textContent = 'Mencari...';
+    chordResult.style.display = 'none';
+
+    try {
+        const json = await fetchJson(`${API_BASE_URL}/chord?q=${encodeURIComponent(query)}&apikey=${API_KEY}`);
+
+        if (!json.status || !json.data || !json.data.chord) {
+            showApiError(json);
+            return;
+        }
+
+        chordTitle.textContent = query;
+        chordText.textContent = json.data.chord;
+        chordResult.style.display = 'block';
+        chordResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (error) {
+        console.error('Chord error:', error);
+        showNotification('Terjadi kesalahan. Periksa koneksi internet Anda atau coba lagi nanti.', 'error');
+    } finally {
+        chordBtn.disabled = false;
+        chordBtn.textContent = 'Cari';
+    }
+}
+
+chordBtn.addEventListener('click', searchChord);
+chordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        searchChord();
+    }
+});
+
+chordCopy.addEventListener('click', async () => {
+    try {
+        await navigator.clipboard.writeText(chordText.textContent);
+        chordCopy.textContent = 'Disalin!';
+    } catch (_) {
+        chordCopy.textContent = 'Gagal';
+    }
+    setTimeout(() => { chordCopy.textContent = 'Copy'; }, 1500);
+});

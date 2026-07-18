@@ -378,6 +378,28 @@
     </div>
     <!-- ===== Akhir Halaman: AI Chat ===== -->
 
+    <!-- ===== Halaman: Tools ===== -->
+    <div class="page" id="page-tools">
+        <div class="tool-card">
+            <div class="tool-head">
+                <h3>🎸 Chord Gitar</h3>
+                <p>Cari chord lagu apa saja</p>
+            </div>
+            <div class="tool-input-row">
+                <input type="text" id="chord-input" placeholder="Judul lagu, mis. lathi" autocomplete="off">
+                <button class="tool-btn" id="chord-btn" type="button">Cari</button>
+            </div>
+            <div class="chord-result" id="chord-result" style="display: none;">
+                <div class="chord-result-head">
+                    <span id="chord-title"></span>
+                    <button class="ai-copy-btn" id="chord-copy" type="button">Copy</button>
+                </div>
+                <pre id="chord-text"></pre>
+            </div>
+        </div>
+    </div>
+    <!-- ===== Akhir Halaman: Tools ===== -->
+
 </div>
 
 <!-- Bottom Navigation -->
@@ -400,6 +422,12 @@
             <path d="M9 17h6"/>
         </svg>
         <span>AI Chat</span>
+    </button>
+    <button class="nav-item" data-page="tools" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+        <span>Tools</span>
     </button>
 </nav>
 
