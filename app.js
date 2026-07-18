@@ -35,7 +35,8 @@ const VIDEO_TYPES = ['mp4', 'gif'];
 // Format: [aksen, aksen gelap, aksen terang, rgb aksen, rgb gelap]
 // ============================================================
 // Set false untuk kembali ke ungu statis (mematikan aksen dinamis)
-const DYNAMIC_ACCENT = true;
+// Dimatikan: warna UI mengikuti ungu logo NullXD agar branding konsisten
+const DYNAMIC_ACCENT = false;
 
 const ACCENTS = {
     default: ['#8b5cf6', '#7c3aed', '#a78bfa', '139, 92, 246', '124, 58, 237'],
